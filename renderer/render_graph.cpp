@@ -32,10 +32,10 @@ void RenderPass::set_texture_inputs(Vulkan::CommandBuffer& cmd,
                                     unsigned set,
                                     unsigned start_binding,
                                     Vulkan::StockSampler sampler) {
-  for (auto& tex : texture_inputs) {
+  for (auto& tex : texture_inputs_) {
     cmd.set_texture(
         set, start_binding,
-        graph.get_physical_texture_resource(tex->get_physical_index()),
+        graph_.get_physical_texture_resource(tex->get_physical_index()),
         sampler);
     start_binding++;
   }
@@ -43,93 +43,93 @@ void RenderPass::set_texture_inputs(Vulkan::CommandBuffer& cmd,
 
 RenderTextureResource& RenderPass::add_attachment_input(
     const std::string& name) {
-  auto& res = graph.get_texture_resource(name);
-  res.add_stages(stages);
-  res.read_in_pass(index);
-  attachments_inputs.push_back(&res);
+  auto& res = graph_.get_texture_resource(name);
+  res.add_stages(stages_);
+  res.read_in_pass(index_);
+  attachments_inputs_.push_back(&res);
   return res;
 }
 
 RenderTextureResource& RenderPass::add_history_input(const std::string& name) {
-  auto& res = graph.get_texture_resource(name);
-  res.add_stages(stages);
+  auto& res = graph_.get_texture_resource(name);
+  res.add_stages(stages_);
   // History inputs are not used in any particular pass, but next frame.
-  history_inputs.push_back(&res);
+  history_inputs_.push_back(&res);
   return res;
 }
 
 RenderBufferResource& RenderPass::add_uniform_input(const std::string& name) {
-  auto& res = graph.get_buffer_resource(name);
-  res.add_stages(stages);
-  res.read_in_pass(index);
-  uniform_inputs.push_back(&res);
+  auto& res = graph_.get_buffer_resource(name);
+  res.add_stages(stages_);
+  res.read_in_pass(index_);
+  uniform_inputs_.push_back(&res);
   return res;
 }
 
 RenderBufferResource& RenderPass::add_storage_read_only_input(
     const std::string& name) {
-  auto& res = graph.get_buffer_resource(name);
-  res.add_stages(stages);
-  res.read_in_pass(index);
-  storage_read_inputs.push_back(&res);
+  auto& res = graph_.get_buffer_resource(name);
+  res.add_stages(stages_);
+  res.read_in_pass(index_);
+  storage_read_inputs_.push_back(&res);
   return res;
 }
 
 RenderBufferResource& RenderPass::add_storage_output(const std::string& name,
                                                      const BufferInfo& info,
                                                      const std::string& input) {
-  auto& res = graph.get_buffer_resource(name);
-  res.add_stages(stages);
+  auto& res = graph_.get_buffer_resource(name);
+  res.add_stages(stages_);
   res.set_buffer_info(info);
-  res.written_in_pass(index);
-  storage_outputs.push_back(&res);
+  res.written_in_pass(index_);
+  storage_outputs_.push_back(&res);
 
   if (!input.empty()) {
-    auto& input_res = graph.get_buffer_resource(input);
-    input_res.read_in_pass(index);
-    storage_inputs.push_back(&input_res);
+    auto& input_res = graph_.get_buffer_resource(input);
+    input_res.read_in_pass(index_);
+    storage_inputs_.push_back(&input_res);
   } else
-    storage_inputs.push_back(nullptr);
+    storage_inputs_.push_back(nullptr);
 
   return res;
 }
 
 RenderTextureResource& RenderPass::add_texture_input(const std::string& name) {
-  auto& res = graph.get_texture_resource(name);
-  res.add_stages(stages);
-  res.read_in_pass(index);
-  texture_inputs.push_back(&res);
+  auto& res = graph_.get_texture_resource(name);
+  res.add_stages(stages_);
+  res.read_in_pass(index_);
+  texture_inputs_.push_back(&res);
   return res;
 }
 
 RenderTextureResource& RenderPass::add_resolve_output(
     const std::string& name,
     const AttachmentInfo& info) {
-  auto& res = graph.get_texture_resource(name);
-  res.add_stages(stages);
-  res.written_in_pass(index);
+  auto& res = graph_.get_texture_resource(name);
+  res.add_stages(stages_);
+  res.written_in_pass(index_);
   res.set_attachment_info(info);
-  resolve_outputs.push_back(&res);
+  resolve_outputs_.push_back(&res);
   return res;
 }
 
 RenderTextureResource& RenderPass::add_color_output(const std::string& name,
                                                     const AttachmentInfo& info,
                                                     const std::string& input) {
-  auto& res = graph.get_texture_resource(name);
-  res.add_stages(stages);
-  res.written_in_pass(index);
+  auto& res = graph_.get_texture_resource(name);
+  res.add_stages(stages_);
+  res.written_in_pass(index_);
   res.set_attachment_info(info);
-  color_outputs.push_back(&res);
+  color_outputs_.push_back(&res);
 
   if (!input.empty()) {
-    auto& input_res = graph.get_texture_resource(input);
-    input_res.read_in_pass(index);
-    color_inputs.push_back(&input_res);
-    color_scale_inputs.push_back(nullptr);
+    auto& input_res = graph_.get_texture_resource(input);
+    input_res.read_in_pass(index_);
+    color_inputs_.push_back(&input_res);
+    color_scale_inputs_.push_back(nullptr);
   } else {
-    color_inputs.push_back(nullptr);
-    color_scale_inputs.push_back(nullptr);
+    color_inputs_.push_back(nullptr);
+    color_scale_inputs_.push_back(nullptr);
   }
 
   return res;
@@ -139,19 +139,19 @@ RenderTextureResource& RenderPass::add_storage_texture_output(
     const std::string& name,
     const AttachmentInfo& info,
     const std::string& input) {
-  auto& res = graph.get_texture_resource(name);
-  res.add_stages(stages);
-  res.written_in_pass(index);
+  auto& res = graph_.get_texture_resource(name);
+  res.add_stages(stages_);
+  res.written_in_pass(index_);
   res.set_attachment_info(info);
   res.set_storage_state(true);
-  storage_texture_outputs.push_back(&res);
+  storage_texture_outputs_.push_back(&res);
 
   if (!input.empty()) {
-    auto& input_res = graph.get_texture_resource(input);
-    input_res.read_in_pass(index);
-    storage_texture_inputs.push_back(&input_res);
+    auto& input_res = graph_.get_texture_resource(input);
+    input_res.read_in_pass(index_);
+    storage_texture_inputs_.push_back(&input_res);
   } else
-    storage_texture_inputs.push_back(nullptr);
+    storage_texture_inputs_.push_back(nullptr);
 
   return res;
 }
@@ -159,20 +159,20 @@ RenderTextureResource& RenderPass::add_storage_texture_output(
 RenderTextureResource& RenderPass::set_depth_stencil_output(
     const std::string& name,
     const AttachmentInfo& info) {
-  auto& res = graph.get_texture_resource(name);
-  res.add_stages(stages);
-  res.written_in_pass(index);
+  auto& res = graph_.get_texture_resource(name);
+  res.add_stages(stages_);
+  res.written_in_pass(index_);
   res.set_attachment_info(info);
-  depth_stencil_output = &res;
+  depth_stencil_output_ = &res;
   return res;
 }
 
 RenderTextureResource& RenderPass::set_depth_stencil_input(
     const std::string& name) {
-  auto& res = graph.get_texture_resource(name);
-  res.add_stages(stages);
-  res.read_in_pass(index);
-  depth_stencil_input = &res;
+  auto& res = graph_.get_texture_resource(name);
+  res.add_stages(stages_);
+  res.read_in_pass(index_);
+  depth_stencil_input_ = &res;
   return res;
 }
 
@@ -186,10 +186,10 @@ RenderGraph::RenderGraph() {
 
 void RenderGraph::on_swapchain_destroyed(
     const Vulkan::SwapchainParameterEvent&) {
-  physical_image_attachments.clear();
-  physical_history_image_attachments.clear();
-  physical_events.clear();
-  physical_history_events.clear();
+  physical_image_attachments_.clear();
+  physical_history_image_attachments_.clear();
+  physical_events_.clear();
+  physical_history_events_.clear();
 }
 
 void RenderGraph::on_swapchain_changed(const Vulkan::SwapchainParameterEvent&) {
@@ -198,87 +198,88 @@ void RenderGraph::on_swapchain_changed(const Vulkan::SwapchainParameterEvent&) {
 void RenderGraph::on_device_created(const Vulkan::DeviceCreatedEvent&) {}
 
 void RenderGraph::on_device_destroyed(const Vulkan::DeviceCreatedEvent&) {
-  physical_buffers.clear();
+  physical_buffers_.clear();
 }
 
 RenderTextureResource& RenderGraph::get_texture_resource(
     const std::string& name) {
-  auto itr = resource_to_index.find(name);
-  if (itr != end(resource_to_index)) {
-    assert(resources[itr->second]->get_type() == RenderResource::Type::Texture);
-    return static_cast<RenderTextureResource&>(*resources[itr->second]);
+  auto itr = resource_to_index_.find(name);
+  if (itr != end(resource_to_index_)) {
+    assert(resources_[itr->second]->get_type() ==
+           RenderResource::Type::Texture);
+    return static_cast<RenderTextureResource&>(*resources_[itr->second]);
   } else {
-    unsigned index = resources.size();
-    resources.emplace_back(new RenderTextureResource(index));
-    resources.back()->set_name(name);
-    resource_to_index[name] = index;
-    return static_cast<RenderTextureResource&>(*resources.back());
+    unsigned index = resources_.size();
+    resources_.emplace_back(new RenderTextureResource(index));
+    resources_.back()->set_name(name);
+    resource_to_index_[name] = index;
+    return static_cast<RenderTextureResource&>(*resources_.back());
   }
 }
 
 RenderBufferResource& RenderGraph::get_buffer_resource(
     const std::string& name) {
-  auto itr = resource_to_index.find(name);
-  if (itr != end(resource_to_index)) {
-    assert(resources[itr->second]->get_type() == RenderResource::Type::Buffer);
-    return static_cast<RenderBufferResource&>(*resources[itr->second]);
+  auto itr = resource_to_index_.find(name);
+  if (itr != end(resource_to_index_)) {
+    assert(resources_[itr->second]->get_type() == RenderResource::Type::Buffer);
+    return static_cast<RenderBufferResource&>(*resources_[itr->second]);
   } else {
-    unsigned index = resources.size();
-    resources.emplace_back(new RenderBufferResource(index));
-    resources.back()->set_name(name);
-    resource_to_index[name] = index;
-    return static_cast<RenderBufferResource&>(*resources.back());
+    unsigned index = resources_.size();
+    resources_.emplace_back(new RenderBufferResource(index));
+    resources_.back()->set_name(name);
+    resource_to_index_[name] = index;
+    return static_cast<RenderBufferResource&>(*resources_.back());
   }
 }
 
 std::vector<Vulkan::BufferHandle> RenderGraph::consume_physical_buffers()
     const {
-  return physical_buffers;
+  return physical_buffers_;
 }
 
 void RenderGraph::install_physical_buffers(
     std::vector<Vulkan::BufferHandle> buffers) {
-  physical_buffers = move(buffers);
+  physical_buffers_ = move(buffers);
 }
 
 Vulkan::BufferHandle RenderGraph::consume_persistent_physical_buffer_resource(
     unsigned index) const {
-  if (index >= physical_buffers.size())
+  if (index >= physical_buffers_.size())
     return {};
-  if (!physical_buffers[index])
+  if (!physical_buffers_[index])
     return {};
 
-  return physical_buffers[index];
+  return physical_buffers_[index];
 }
 
 void RenderGraph::install_persistent_physical_buffer_resource(
     unsigned index,
     Vulkan::BufferHandle buffer) {
-  if (index >= physical_buffers.size())
+  if (index >= physical_buffers_.size())
     throw logic_error("Out of range.");
-  physical_buffers[index] = buffer;
+  physical_buffers_[index] = buffer;
 }
 
 RenderPass& RenderGraph::add_pass(const std::string& name,
                                   VkPipelineStageFlags stages) {
-  auto itr = pass_to_index.find(name);
-  if (itr != end(pass_to_index)) {
-    return *passes[itr->second];
+  auto itr = pass_to_index_.find(name);
+  if (itr != end(pass_to_index_)) {
+    return *passes_[itr->second];
   } else {
-    unsigned index = passes.size();
-    passes.emplace_back(new RenderPass(*this, index, stages));
-    passes.back()->set_name(name);
-    pass_to_index[name] = index;
-    return *passes.back();
+    unsigned index = passes_.size();
+    passes_.emplace_back(new RenderPass(*this, index, stages));
+    passes_.back()->set_name(name);
+    pass_to_index_[name] = index;
+    return *passes_.back();
   }
 }
 
 void RenderGraph::set_backbuffer_source(const std::string& name) {
-  backbuffer_source = name;
+  backbuffer_source_ = name;
 }
 
 void RenderGraph::validate_passes() {
-  for (auto& pass_ptr : passes) {
+  for (auto& pass_ptr : passes_) {
     auto& pass = *pass_ptr;
 
     if (pass.get_color_inputs().size() != pass.get_color_outputs().size())
@@ -345,42 +346,42 @@ void RenderGraph::build_physical_resources() {
   unsigned phys_index = 0;
 
   // Find resources which can alias safely.
-  for (auto& pass_index : pass_stack) {
-    auto& pass = *passes[pass_index];
+  for (auto& pass_index : pass_stack_) {
+    auto& pass = *passes_[pass_index];
 
     for (auto* input : pass.get_texture_inputs()) {
       if (input->get_physical_index() == RenderResource::Unused) {
-        physical_dimensions.push_back(get_resource_dimensions(*input));
+        physical_dimensions_.push_back(get_resource_dimensions(*input));
         input->set_physical_index(phys_index++);
       } else
-        physical_dimensions[input->get_physical_index()].stages |=
+        physical_dimensions_[input->get_physical_index()].stages |=
             input->get_used_stages();
     }
 
     for (auto* input : pass.get_uniform_inputs()) {
       if (input->get_physical_index() == RenderResource::Unused) {
-        physical_dimensions.push_back(get_resource_dimensions(*input));
+        physical_dimensions_.push_back(get_resource_dimensions(*input));
         input->set_physical_index(phys_index++);
       } else
-        physical_dimensions[input->get_physical_index()].stages |=
+        physical_dimensions_[input->get_physical_index()].stages |=
             input->get_used_stages();
     }
 
     for (auto* input : pass.get_storage_read_inputs()) {
       if (input->get_physical_index() == RenderResource::Unused) {
-        physical_dimensions.push_back(get_resource_dimensions(*input));
+        physical_dimensions_.push_back(get_resource_dimensions(*input));
         input->set_physical_index(phys_index++);
       } else
-        physical_dimensions[input->get_physical_index()].stages |=
+        physical_dimensions_[input->get_physical_index()].stages |=
             input->get_used_stages();
     }
 
     for (auto* input : pass.get_color_scale_inputs()) {
       if (input && input->get_physical_index() == RenderResource::Unused) {
-        physical_dimensions.push_back(get_resource_dimensions(*input));
+        physical_dimensions_.push_back(get_resource_dimensions(*input));
         input->set_physical_index(phys_index++);
       } else if (input)
-        physical_dimensions[input->get_physical_index()].stages |=
+        physical_dimensions_[input->get_physical_index()].stages |=
             input->get_used_stages();
     }
 
@@ -390,10 +391,10 @@ void RenderGraph::build_physical_resources() {
         auto* input = pass.get_color_inputs()[i];
         if (input) {
           if (input->get_physical_index() == RenderResource::Unused) {
-            physical_dimensions.push_back(get_resource_dimensions(*input));
+            physical_dimensions_.push_back(get_resource_dimensions(*input));
             input->set_physical_index(phys_index++);
           } else
-            physical_dimensions[input->get_physical_index()].stages |=
+            physical_dimensions_[input->get_physical_index()].stages |=
                 input->get_used_stages();
 
           if (pass.get_color_outputs()[i]->get_physical_index() ==
@@ -413,10 +414,10 @@ void RenderGraph::build_physical_resources() {
         auto* input = pass.get_storage_inputs()[i];
         if (input) {
           if (input->get_physical_index() == RenderResource::Unused) {
-            physical_dimensions.push_back(get_resource_dimensions(*input));
+            physical_dimensions_.push_back(get_resource_dimensions(*input));
             input->set_physical_index(phys_index++);
           } else
-            physical_dimensions[input->get_physical_index()].stages |=
+            physical_dimensions_[input->get_physical_index()].stages |=
                 input->get_used_stages();
 
           if (pass.get_storage_outputs()[i]->get_physical_index() ==
@@ -436,10 +437,10 @@ void RenderGraph::build_physical_resources() {
         auto* input = pass.get_storage_texture_inputs()[i];
         if (input) {
           if (input->get_physical_index() == RenderResource::Unused) {
-            physical_dimensions.push_back(get_resource_dimensions(*input));
+            physical_dimensions_.push_back(get_resource_dimensions(*input));
             input->set_physical_index(phys_index++);
           } else
-            physical_dimensions[input->get_physical_index()].stages |=
+            physical_dimensions_[input->get_physical_index()].stages |=
                 input->get_used_stages();
 
           if (pass.get_storage_texture_outputs()[i]->get_physical_index() ==
@@ -455,37 +456,37 @@ void RenderGraph::build_physical_resources() {
 
     for (auto* output : pass.get_color_outputs()) {
       if (output->get_physical_index() == RenderResource::Unused) {
-        physical_dimensions.push_back(get_resource_dimensions(*output));
+        physical_dimensions_.push_back(get_resource_dimensions(*output));
         output->set_physical_index(phys_index++);
       } else
-        physical_dimensions[output->get_physical_index()].stages |=
+        physical_dimensions_[output->get_physical_index()].stages |=
             output->get_used_stages();
     }
 
     for (auto* output : pass.get_resolve_outputs()) {
       if (output->get_physical_index() == RenderResource::Unused) {
-        physical_dimensions.push_back(get_resource_dimensions(*output));
+        physical_dimensions_.push_back(get_resource_dimensions(*output));
         output->set_physical_index(phys_index++);
       } else
-        physical_dimensions[output->get_physical_index()].stages |=
+        physical_dimensions_[output->get_physical_index()].stages |=
             output->get_used_stages();
     }
 
     for (auto* output : pass.get_storage_outputs()) {
       if (output->get_physical_index() == RenderResource::Unused) {
-        physical_dimensions.push_back(get_resource_dimensions(*output));
+        physical_dimensions_.push_back(get_resource_dimensions(*output));
         output->set_physical_index(phys_index++);
       } else
-        physical_dimensions[output->get_physical_index()].stages |=
+        physical_dimensions_[output->get_physical_index()].stages |=
             output->get_used_stages();
     }
 
     for (auto* output : pass.get_storage_texture_outputs()) {
       if (output->get_physical_index() == RenderResource::Unused) {
-        physical_dimensions.push_back(get_resource_dimensions(*output));
+        physical_dimensions_.push_back(get_resource_dimensions(*output));
         output->set_physical_index(phys_index++);
       } else
-        physical_dimensions[output->get_physical_index()].stages |=
+        physical_dimensions_[output->get_physical_index()].stages |=
             output->get_used_stages();
     }
 
@@ -493,10 +494,10 @@ void RenderGraph::build_physical_resources() {
     auto* ds_input = pass.get_depth_stencil_input();
     if (ds_input) {
       if (ds_input->get_physical_index() == RenderResource::Unused) {
-        physical_dimensions.push_back(get_resource_dimensions(*ds_input));
+        physical_dimensions_.push_back(get_resource_dimensions(*ds_input));
         ds_input->set_physical_index(phys_index++);
       } else
-        physical_dimensions[ds_input->get_physical_index()].stages |=
+        physical_dimensions_[ds_input->get_physical_index()].stages |=
             ds_input->get_used_stages();
 
       if (ds_output) {
@@ -506,15 +507,15 @@ void RenderGraph::build_physical_resources() {
                  ds_input->get_physical_index())
           throw logic_error("Cannot alias resources. Index already claimed.");
         else
-          physical_dimensions[ds_output->get_physical_index()].stages |=
+          physical_dimensions_[ds_output->get_physical_index()].stages |=
               ds_output->get_used_stages();
       }
     } else if (ds_output) {
       if (ds_output->get_physical_index() == RenderResource::Unused) {
-        physical_dimensions.push_back(get_resource_dimensions(*ds_output));
+        physical_dimensions_.push_back(get_resource_dimensions(*ds_output));
         ds_output->set_physical_index(phys_index++);
       } else
-        physical_dimensions[ds_output->get_physical_index()].stages |=
+        physical_dimensions_[ds_output->get_physical_index()].stages |=
             ds_output->get_used_stages();
     }
 
@@ -522,48 +523,48 @@ void RenderGraph::build_physical_resources() {
     // color/depth attachments in the same subpass.
     for (auto* input : pass.get_attachment_inputs()) {
       if (input->get_physical_index() == RenderResource::Unused) {
-        physical_dimensions.push_back(get_resource_dimensions(*input));
+        physical_dimensions_.push_back(get_resource_dimensions(*input));
         input->set_physical_index(phys_index++);
       } else
-        physical_dimensions[input->get_physical_index()].stages |=
+        physical_dimensions_[input->get_physical_index()].stages |=
             input->get_used_stages();
     }
   }
 
   // Figure out which physical resources need to have history.
-  physical_image_has_history.clear();
-  physical_image_has_history.resize(physical_dimensions.size());
+  physical_image_has_history_.clear();
+  physical_image_has_history_.resize(physical_dimensions_.size());
 
-  for (auto& pass_index : pass_stack) {
-    auto& pass = *passes[pass_index];
+  for (auto& pass_index : pass_stack_) {
+    auto& pass = *passes_[pass_index];
     for (auto& history : pass.get_history_inputs()) {
       unsigned phys_index = history->get_physical_index();
       if (phys_index == RenderResource::Unused)
         throw logic_error(
             "History input is used, but it was never written to.");
-      physical_image_has_history[phys_index] = true;
+      physical_image_has_history_[phys_index] = true;
     }
   }
 }
 
 void RenderGraph::build_transients() {
-  vector<unsigned> physical_pass_used(physical_dimensions.size());
+  vector<unsigned> physical_pass_used(physical_dimensions_.size());
   for (auto& u : physical_pass_used)
     u = RenderPass::Unused;
 
-  for (auto& dim : physical_dimensions) {
+  for (auto& dim : physical_dimensions_) {
     // Buffers are never transient.
     if (dim.buffer_info.size)
       dim.transient = false;
     else
       dim.transient = true;
 
-    unsigned index = unsigned(&dim - physical_dimensions.data());
-    if (physical_image_has_history[index])
+    unsigned index = unsigned(&dim - physical_dimensions_.data());
+    if (physical_image_has_history_[index])
       dim.transient = false;
   }
 
-  for (auto& resource : resources) {
+  for (auto& resource : resources_) {
     if (resource->get_type() != RenderResource::Type::Texture)
       continue;
 
@@ -572,11 +573,11 @@ void RenderGraph::build_transients() {
       continue;
 
     for (auto& pass : resource->get_write_passes()) {
-      unsigned phys = passes[pass]->get_physical_pass_index();
+      unsigned phys = passes_[pass]->get_physical_pass_index();
       if (phys != RenderPass::Unused) {
         if (physical_pass_used[physical_index] != RenderPass::Unused &&
             phys != physical_pass_used[physical_index]) {
-          physical_dimensions[physical_index].transient = false;
+          physical_dimensions_[physical_index].transient = false;
           break;
         }
         physical_pass_used[physical_index] = phys;
@@ -584,11 +585,11 @@ void RenderGraph::build_transients() {
     }
 
     for (auto& pass : resource->get_read_passes()) {
-      unsigned phys = passes[pass]->get_physical_pass_index();
+      unsigned phys = passes_[pass]->get_physical_pass_index();
       if (phys != RenderPass::Unused) {
         if (physical_pass_used[physical_index] != RenderPass::Unused &&
             phys != physical_pass_used[physical_index]) {
-          physical_dimensions[physical_index].transient = false;
+          physical_dimensions_[physical_index].transient = false;
           break;
         }
         physical_pass_used[physical_index] = phys;
@@ -598,7 +599,7 @@ void RenderGraph::build_transients() {
 }
 
 void RenderGraph::build_render_pass_info() {
-  for (auto& physical_pass : physical_passes) {
+  for (auto& physical_pass : physical_passes_) {
     auto& rp = physical_pass.render_pass_info;
     physical_pass.subpasses.resize(physical_pass.passes.size());
     rp.subpasses = physical_pass.subpasses.data();
@@ -636,7 +637,7 @@ void RenderGraph::build_render_pass_info() {
     for (auto& subpass : physical_pass.passes) {
       vector<ScaledClearRequests> scaled_clear_requests;
 
-      auto& pass = *passes[subpass];
+      auto& pass = *passes_[subpass];
       unsigned subpass_index = unsigned(&subpass - physical_pass.passes.data());
 
       // Add color attachments.
@@ -744,8 +745,8 @@ void RenderGraph::build_render_pass_info() {
 
           bool preserve_depth = false;
           for (auto& read_pass : ds_input->get_read_passes()) {
-            if (passes[read_pass]->get_physical_pass_index() >
-                unsigned(&physical_pass - physical_passes.data())) {
+            if (passes_[read_pass]->get_physical_pass_index() >
+                unsigned(&physical_pass - physical_passes_.data())) {
               preserve_depth = true;
               break;
             }
@@ -767,7 +768,7 @@ void RenderGraph::build_render_pass_info() {
     }
 
     for (auto& subpass : physical_pass.passes) {
-      auto& pass = *passes[subpass];
+      auto& pass = *passes_[subpass];
       unsigned subpass_index = unsigned(&subpass - physical_pass.passes.data());
 
       // Add input attachments.
@@ -794,7 +795,7 @@ void RenderGraph::build_render_pass_info() {
 }
 
 void RenderGraph::build_physical_passes() {
-  physical_passes.clear();
+  physical_passes_.clear();
   PhysicalPass physical_pass;
 
   const auto find_attachment =
@@ -819,7 +820,7 @@ void RenderGraph::build_physical_passes() {
 
     for (auto* output : prev.get_color_outputs()) {
       // Need to mip-map after this pass, so cannot merge.
-      if (physical_dimensions[output->get_physical_index()].levels > 1)
+      if (physical_dimensions_[output->get_physical_index()].levels > 1)
         return false;
     }
 
@@ -915,14 +916,14 @@ void RenderGraph::build_physical_passes() {
     return false;
   };
 
-  for (unsigned index = 0; index < pass_stack.size();) {
+  for (unsigned index = 0; index < pass_stack_.size();) {
     unsigned merge_end = index + 1;
-    for (; merge_end < pass_stack.size(); merge_end++) {
+    for (; merge_end < pass_stack_.size(); merge_end++) {
       bool merge = true;
       for (unsigned merge_start = index; merge_start < merge_end;
            merge_start++) {
-        if (!should_merge(*passes[pass_stack[merge_start]],
-                          *passes[pass_stack[merge_end]])) {
+        if (!should_merge(*passes_[pass_stack_[merge_start]],
+                          *passes_[pass_stack_[merge_end]])) {
           merge = false;
           break;
         }
@@ -933,49 +934,49 @@ void RenderGraph::build_physical_passes() {
     }
 
     physical_pass.passes.insert(end(physical_pass.passes),
-                                begin(pass_stack) + index,
-                                begin(pass_stack) + merge_end);
-    physical_passes.push_back(move(physical_pass));
+                                begin(pass_stack_) + index,
+                                begin(pass_stack_) + merge_end);
+    physical_passes_.push_back(move(physical_pass));
     index = merge_end;
   }
 
-  for (auto& physical_pass : physical_passes) {
-    unsigned index = &physical_pass - physical_passes.data();
+  for (auto& physical_pass : physical_passes_) {
+    unsigned index = &physical_pass - physical_passes_.data();
     for (auto& pass : physical_pass.passes)
-      passes[pass]->set_physical_pass_index(index);
+      passes_[pass]->set_physical_pass_index(index);
   }
 }
 
 void RenderGraph::log() {
-  for (auto& resource : physical_dimensions) {
+  for (auto& resource : physical_dimensions_) {
     if (resource.buffer_info.size) {
       LOGI("Resource #%u (%s): size: %u\n",
-           unsigned(&resource - physical_dimensions.data()),
+           unsigned(&resource - physical_dimensions_.data()),
            resource.name.c_str(), unsigned(resource.buffer_info.size));
     } else {
       LOGI(
           "Resource #%u (%s): %u x %u (fmt: %u), samples: %u, transient: "
           "%s%s\n",
-          unsigned(&resource - physical_dimensions.data()),
+          unsigned(&resource - physical_dimensions_.data()),
           resource.name.c_str(), resource.width, resource.height,
           unsigned(resource.format), resource.samples,
           resource.transient ? "yes" : "no",
-          unsigned(&resource - physical_dimensions.data()) ==
-                  swapchain_physical_index
+          unsigned(&resource - physical_dimensions_.data()) ==
+                  swapchain_physical_index_
               ? " (swapchain)"
               : "");
     }
   }
 
-  auto barrier_itr = begin(pass_barriers);
+  auto barrier_itr = begin(pass_barriers_);
 
   const auto swap_str = [this](const Barrier& barrier) -> const char* {
-    return barrier.resource_index == swapchain_physical_index ? " (swapchain)"
-                                                              : "";
+    return barrier.resource_index == swapchain_physical_index_ ? " (swapchain)"
+                                                               : "";
   };
 
-  for (auto& passes : physical_passes) {
-    LOGI("Physical pass #%u:\n", unsigned(&passes - physical_passes.data()));
+  for (auto& passes : physical_passes_) {
+    LOGI("Physical pass #%u:\n", unsigned(&passes - physical_passes_.data()));
 
     for (auto& barrier : passes.invalidate) {
       LOGI("  Invalidate: %u%s, layout: %s, access: %s, stages: %s\n",
@@ -987,12 +988,12 @@ void RenderGraph::log() {
 
     for (auto& subpass : passes.passes) {
       LOGI("    Subpass #%u (%s):\n", unsigned(&subpass - passes.passes.data()),
-           this->passes[subpass]->get_name().c_str());
-      auto& pass = *this->passes[subpass];
+           this->passes_[subpass]->get_name().c_str());
+      auto& pass = *this->passes_[subpass];
 
       auto& barriers = *barrier_itr;
       for (auto& barrier : barriers.invalidate) {
-        if (!physical_dimensions[barrier.resource_index].transient) {
+        if (!physical_dimensions_[barrier.resource_index].transient) {
           LOGI("      Invalidate: %u%s, layout: %s, access: %s, stages: %s\n",
                barrier.resource_index, swap_str(barrier),
                Vulkan::layout_to_string(barrier.layout),
@@ -1034,8 +1035,8 @@ void RenderGraph::log() {
       }
 
       for (auto& barrier : barriers.flush) {
-        if (!physical_dimensions[barrier.resource_index].transient &&
-            barrier.resource_index != swapchain_physical_index) {
+        if (!physical_dimensions_[barrier.resource_index].transient &&
+            barrier.resource_index != swapchain_physical_index_) {
           LOGI("      Flush: %u, layout: %s, access: %s, stages: %s\n",
                barrier.resource_index, Vulkan::layout_to_string(barrier.layout),
                Vulkan::access_flags_to_string(barrier.access).c_str(),
@@ -1063,7 +1064,7 @@ void RenderGraph::enqueue_mipmap_requests(
     return;
 
   for (auto& req : requests) {
-    auto& image = physical_attachments[req.physical_resource]->get_image();
+    auto& image = physical_attachments_[req.physical_resource]->get_image();
     auto old_layout = image.get_layout();
     cmd.barrier_prepare_generate_mipmap(image, req.layout, req.stages,
                                         req.access);
@@ -1088,7 +1089,8 @@ void RenderGraph::enqueue_scaled_requests(
 
   for (auto& req : requests) {
     defines.push_back({string("HAVE_TARGET_") + to_string(req.target), 1});
-    cmd.set_texture(0, req.target, *physical_attachments[req.physical_resource],
+    cmd.set_texture(0, req.target,
+                    *physical_attachments_[req.physical_resource],
                     Vulkan::StockSampler::LinearClamp);
   }
 
@@ -1148,7 +1150,7 @@ void RenderGraph::build_aliases() {
     }
   };
 
-  vector<Range> pass_range(physical_dimensions.size());
+  vector<Range> pass_range(physical_dimensions_.size());
 
   const auto register_reader = [this, &pass_range](
                                    const RenderTextureResource* resource,
@@ -1176,8 +1178,8 @@ void RenderGraph::build_aliases() {
     }
   };
 
-  for (auto& pass : pass_stack) {
-    auto& subpass = *passes[pass];
+  for (auto& pass : pass_stack_) {
+    auto& subpass = *passes_[pass];
 
     for (auto* input : subpass.get_color_inputs())
       register_reader(input, subpass.get_physical_pass_index());
@@ -1200,27 +1202,27 @@ void RenderGraph::build_aliases() {
       register_writer(output, subpass.get_physical_pass_index());
   }
 
-  vector<vector<unsigned>> alias_chains(physical_dimensions.size());
+  vector<vector<unsigned>> alias_chains(physical_dimensions_.size());
 
-  physical_aliases.resize(physical_dimensions.size());
-  for (auto& v : physical_aliases)
+  physical_aliases_.resize(physical_dimensions_.size());
+  for (auto& v : physical_aliases_)
     v = RenderResource::Unused;
 
-  for (unsigned i = 0; i < physical_dimensions.size(); i++) {
+  for (unsigned i = 0; i < physical_dimensions_.size(); i++) {
     // No aliases for buffers.
-    if (physical_dimensions[i].buffer_info.size)
+    if (physical_dimensions_[i].buffer_info.size)
       continue;
 
     // Only try to alias with lower-indexed resources, because we allocate them
     // one-by-one starting from index 0.
     for (unsigned j = 0; j < i; j++) {
-      if (physical_image_has_history[j])
+      if (physical_image_has_history_[j])
         continue;
 
-      if (physical_dimensions[i] == physical_dimensions[j]) {
+      if (physical_dimensions_[i] == physical_dimensions_[j]) {
         if (pass_range[i].disjoint_lifetime(pass_range[j]))  // We can alias.
         {
-          physical_aliases[i] = j;
+          physical_aliases_[i] = j;
           if (alias_chains[j].empty())
             alias_chains[j].push_back(j);
           alias_chains[j].push_back(i);
@@ -1243,10 +1245,10 @@ void RenderGraph::build_aliases() {
 
     for (unsigned i = 0; i < chain.size(); i++) {
       if (i + 1 < chain.size())
-        physical_passes[pass_range[chain[i]].last_used_pass()]
+        physical_passes_[pass_range[chain[i]].last_used_pass()]
             .alias_transfer.push_back(make_pair(chain[i], chain[i + 1]));
       else
-        physical_passes[pass_range[chain[i]].last_used_pass()]
+        physical_passes_[pass_range[chain[i]].last_used_pass()]
             .alias_transfer.push_back(make_pair(chain[i], chain[0]));
     }
   }
@@ -1283,8 +1285,8 @@ void RenderGraph::enqueue_render_passes(Vulkan::Device& device) {
     // Need to wait on this event before we can transfer ownership to another
     // alias.
     for (auto& transfer : pass.alias_transfer) {
-      auto& events = physical_events[transfer.second];
-      events = physical_events[transfer.first];
+      auto& events = physical_events_[transfer.second];
+      events = physical_events_[transfer.first];
       for (auto& e : events.invalidated_in_stage)
         e = 0;
 
@@ -1298,15 +1300,15 @@ void RenderGraph::enqueue_render_passes(Vulkan::Device& device) {
 
       events.to_flush_access = 0;
 
-      physical_attachments[transfer.second]->get_image().set_layout(
+      physical_attachments_[transfer.second]->get_image().set_layout(
           VK_IMAGE_LAYOUT_UNDEFINED);
     }
   };
 
-  for (auto& physical_pass : physical_passes) {
+  for (auto& physical_pass : physical_passes_) {
     bool require_pass = false;
     for (auto& pass : physical_pass.passes) {
-      if (passes[pass]->need_render_pass())
+      if (passes_[pass]->need_render_pass())
         require_pass = true;
     }
 
@@ -1315,7 +1317,7 @@ void RenderGraph::enqueue_render_passes(Vulkan::Device& device) {
       continue;
     }
 
-    bool graphics = (passes[physical_pass.passes.front()]->get_stages() &
+    bool graphics = (passes_[physical_pass.passes.front()]->get_stages() &
                      VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT) != 0;
     auto queue_type = graphics ? Vulkan::CommandBuffer::Type::Graphics
                                : Vulkan::CommandBuffer::Type::Compute;
@@ -1348,15 +1350,15 @@ void RenderGraph::enqueue_render_passes(Vulkan::Device& device) {
     // Before invalidating, force the layout to UNDEFINED.
     // This will be required for resource aliasing later.
     for (auto& discard : physical_pass.discards)
-      if (!physical_dimensions[discard].buffer_info.size)
-        physical_attachments[discard]->get_image().set_layout(
+      if (!physical_dimensions_[discard].buffer_info.size)
+        physical_attachments_[discard]->get_image().set_layout(
             VK_IMAGE_LAYOUT_UNDEFINED);
 
     // Queue up invalidates and change layouts.
     for (auto& barrier : physical_pass.invalidate) {
       auto& event = barrier.history
-                        ? physical_history_events[barrier.resource_index]
-                        : physical_events[barrier.resource_index];
+                        ? physical_history_events_[barrier.resource_index]
+                        : physical_events_[barrier.resource_index];
 
       bool need_event_barrier = false;
       bool layout_change = false;
@@ -1364,7 +1366,7 @@ void RenderGraph::enqueue_render_passes(Vulkan::Device& device) {
       auto& wait_semaphore = graphics ? event.wait_graphics_semaphore
                                       : event.wait_compute_semaphore;
 
-      if (physical_dimensions[barrier.resource_index].buffer_info.size) {
+      if (physical_dimensions_[barrier.resource_index].buffer_info.size) {
         // Buffers.
         bool need_sync =
             (event.to_flush_access != 0) || need_invalidate(barrier, event);
@@ -1377,7 +1379,7 @@ void RenderGraph::enqueue_render_passes(Vulkan::Device& device) {
         }
 
         if (need_event_barrier) {
-          auto& buffer = *physical_buffers[barrier.resource_index];
+          auto& buffer = *physical_buffers_[barrier.resource_index];
           VkBufferMemoryBarrier b = {VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER};
 
           b.srcAccessMask = event.to_flush_access;
@@ -1393,9 +1395,9 @@ void RenderGraph::enqueue_render_passes(Vulkan::Device& device) {
         // Images.
         Vulkan::Image* image =
             barrier.history
-                ? physical_history_image_attachments[barrier.resource_index]
+                ? physical_history_image_attachments_[barrier.resource_index]
                       .get()
-                : &physical_attachments[barrier.resource_index]->get_image();
+                : &physical_attachments_[barrier.resource_index]->get_image();
 
         if (!image) {
           // Can happen for history inputs if this is the first frame.
@@ -1534,7 +1536,7 @@ void RenderGraph::enqueue_render_passes(Vulkan::Device& device) {
             physical_pass.scaled_clear_requests[subpass_index];
         enqueue_scaled_requests(*cmd, scaled_requests);
 
-        auto& pass = *passes[subpass];
+        auto& pass = *passes_[subpass];
 
         // If we have started the render pass, we have to do it, even if a lone
         // subpass might not be required, due to clearing and so on. This should
@@ -1550,13 +1552,13 @@ void RenderGraph::enqueue_render_passes(Vulkan::Device& device) {
       enqueue_mipmap_requests(*cmd, physical_pass.mipmap_requests);
     } else {
       assert(physical_pass.passes.size() == 1);
-      auto& pass = *passes[physical_pass.passes.front()];
+      auto& pass = *passes_[physical_pass.passes.front()];
       pass.build_render_pass(*cmd);
     }
 
     VkPipelineStageFlags wait_stages = 0;
     for (auto& barrier : physical_pass.flush)
-      if (!physical_dimensions[barrier.resource_index].uses_semaphore())
+      if (!physical_dimensions_[barrier.resource_index].uses_semaphore())
         wait_stages |= barrier.stages;
 
     Vulkan::PipelineEvent pipeline_event;
@@ -1567,16 +1569,16 @@ void RenderGraph::enqueue_render_passes(Vulkan::Device& device) {
 
     for (auto& barrier : physical_pass.flush) {
       auto& event = barrier.history
-                        ? physical_history_events[barrier.resource_index]
-                        : physical_events[barrier.resource_index];
+                        ? physical_history_events_[barrier.resource_index]
+                        : physical_events_[barrier.resource_index];
 
       // A render pass might have changed the final layout.
-      if (!physical_dimensions[barrier.resource_index].buffer_info.size) {
+      if (!physical_dimensions_[barrier.resource_index].buffer_info.size) {
         auto* image =
             barrier.history
-                ? physical_history_image_attachments[barrier.resource_index]
+                ? physical_history_image_attachments_[barrier.resource_index]
                       .get()
-                : &physical_attachments[barrier.resource_index]->get_image();
+                : &physical_attachments_[barrier.resource_index]->get_image();
 
         if (!image)
           continue;
@@ -1587,7 +1589,7 @@ void RenderGraph::enqueue_render_passes(Vulkan::Device& device) {
       // Mark if there are pending writes from this pass.
       event.to_flush_access = barrier.access;
 
-      if (physical_dimensions[barrier.resource_index].uses_semaphore()) {
+      if (physical_dimensions_[barrier.resource_index].uses_semaphore()) {
         need_submission_semaphore = true;
         // Actual semaphore will be set on submission.
       } else
@@ -1607,10 +1609,10 @@ void RenderGraph::enqueue_render_passes(Vulkan::Device& device) {
     if (need_submission_semaphore) {
       for (auto& barrier : physical_pass.flush) {
         auto& event = barrier.history
-                          ? physical_history_events[barrier.resource_index]
-                          : physical_events[barrier.resource_index];
+                          ? physical_history_events_[barrier.resource_index]
+                          : physical_events_[barrier.resource_index];
 
-        if (physical_dimensions[barrier.resource_index].uses_semaphore()) {
+        if (physical_dimensions_[barrier.resource_index].uses_semaphore()) {
           event.wait_graphics_semaphore = graphics_semaphore;
           event.wait_compute_semaphore = compute_semaphore;
         }
@@ -1622,40 +1624,41 @@ void RenderGraph::enqueue_render_passes(Vulkan::Device& device) {
   }
 
   // Scale to swapchain.
-  if (swapchain_physical_index == RenderResource::Unused) {
+  if (swapchain_physical_index_ == RenderResource::Unused) {
     auto cmd = device.request_command_buffer();
 
-    unsigned index = this->resources[resource_to_index[backbuffer_source]]
+    unsigned index = this->resources_[resource_to_index_[backbuffer_source_]]
                          ->get_physical_index();
-    auto& image = physical_attachments[index]->get_image();
+    auto& image = physical_attachments_[index]->get_image();
 
-    if (physical_events[index].event) {
-      VkEvent event = physical_events[index].event->get_event();
+    if (physical_events_[index].event) {
+      VkEvent event = physical_events_[index].event->get_event();
       VkImageMemoryBarrier barrier = {VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER};
       barrier.image = image.get_image();
-      barrier.oldLayout = physical_attachments[index]->get_image().get_layout();
+      barrier.oldLayout =
+          physical_attachments_[index]->get_image().get_layout();
       barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-      barrier.srcAccessMask = physical_events[index].to_flush_access;
+      barrier.srcAccessMask = physical_events_[index].to_flush_access;
       barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
       barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
       barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
       barrier.subresourceRange.levelCount = VK_REMAINING_MIP_LEVELS;
       barrier.subresourceRange.layerCount = VK_REMAINING_ARRAY_LAYERS;
       barrier.subresourceRange.aspectMask = Vulkan::format_to_aspect_mask(
-          physical_attachments[index]->get_format());
+          physical_attachments_[index]->get_format());
 
-      cmd->wait_events(1, &event, physical_events[index].event->get_stages(),
+      cmd->wait_events(1, &event, physical_events_[index].event->get_stages(),
                        VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, nullptr, 0,
                        nullptr, 1, &barrier);
 
-      physical_attachments[index]->get_image().set_layout(
+      physical_attachments_[index]->get_image().set_layout(
           VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-    } else if (physical_events[index].wait_graphics_semaphore) {
-      if (physical_events[index].wait_graphics_semaphore->get_semaphore() !=
+    } else if (physical_events_[index].wait_graphics_semaphore) {
+      if (physical_events_[index].wait_graphics_semaphore->get_semaphore() !=
           VK_NULL_HANDLE) {
         device.add_wait_semaphore(
             Vulkan::CommandBuffer::Type::Graphics,
-            physical_events[index].wait_graphics_semaphore,
+            physical_events_[index].wait_graphics_semaphore,
             VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
       }
 
@@ -1678,13 +1681,13 @@ void RenderGraph::enqueue_render_passes(Vulkan::Device& device) {
     cmd->end_render_pass();
 
     // Set a write-after-read barrier on this resource.
-    physical_events[index].to_flush_access = 0;
-    for (auto& e : physical_events[index].invalidated_in_stage)
+    physical_events_[index].to_flush_access = 0;
+    for (auto& e : physical_events_[index].invalidated_in_stage)
       e = 0;
-    physical_events[index].invalidated_in_stage[trailing_zeroes(
+    physical_events_[index].invalidated_in_stage[trailing_zeroes(
         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT)] = VK_ACCESS_SHADER_READ_BIT;
 
-    if (physical_dimensions[index].uses_semaphore()) {
+    if (physical_dimensions_[index].uses_semaphore()) {
       Vulkan::Semaphore graphics_semaphore;
       Vulkan::Semaphore compute_semaphore;
 
@@ -1692,10 +1695,10 @@ void RenderGraph::enqueue_render_passes(Vulkan::Device& device) {
       device.submit(cmd, nullptr, &graphics_semaphore);
       device.submit_empty(Vulkan::CommandBuffer::Type::Graphics, nullptr,
                           &compute_semaphore);
-      physical_events[index].wait_graphics_semaphore = graphics_semaphore;
-      physical_events[index].wait_compute_semaphore = compute_semaphore;
+      physical_events_[index].wait_graphics_semaphore = graphics_semaphore;
+      physical_events_[index].wait_compute_semaphore = compute_semaphore;
     } else {
-      physical_events[index].event =
+      physical_events_[index].event =
           cmd->signal_event(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
       device.submit(cmd);
     }
@@ -1704,7 +1707,7 @@ void RenderGraph::enqueue_render_passes(Vulkan::Device& device) {
 
 void RenderGraph::setup_physical_buffer(Vulkan::Device& device,
                                         unsigned attachment) {
-  auto& att = physical_dimensions[attachment];
+  auto& att = physical_dimensions_[attachment];
 
   Vulkan::BufferCreateInfo info = {};
   info.size = att.buffer_info.size;
@@ -1712,10 +1715,10 @@ void RenderGraph::setup_physical_buffer(Vulkan::Device& device,
   info.domain = Vulkan::BufferDomain::Device;
 
   bool need_buffer = true;
-  if (physical_buffers[attachment]) {
+  if (physical_buffers_[attachment]) {
     if (att.persistent &&
-        physical_buffers[attachment]->get_create_info().size == info.size &&
-        (physical_buffers[attachment]->get_create_info().usage & info.usage) ==
+        physical_buffers_[attachment]->get_create_info().size == info.size &&
+        (physical_buffers_[attachment]->get_create_info().usage & info.usage) ==
             info.usage) {
       need_buffer = false;
     }
@@ -1724,22 +1727,22 @@ void RenderGraph::setup_physical_buffer(Vulkan::Device& device,
   if (need_buffer) {
     // Zero-initialize buffers. TODO: Make this configurable.
     vector<uint8_t> blank(info.size);
-    physical_buffers[attachment] = device.create_buffer(info, blank.data());
-    physical_events[attachment] = {};
+    physical_buffers_[attachment] = device.create_buffer(info, blank.data());
+    physical_events_[attachment] = {};
   }
 }
 
 void RenderGraph::setup_physical_image(Vulkan::Device& device,
                                        unsigned attachment,
                                        bool storage) {
-  auto& att = physical_dimensions[attachment];
+  auto& att = physical_dimensions_[attachment];
 
-  if (physical_aliases[attachment] != RenderResource::Unused) {
-    physical_image_attachments[attachment] =
-        physical_image_attachments[physical_aliases[attachment]];
-    physical_attachments[attachment] =
-        &physical_image_attachments[attachment]->get_view();
-    physical_events[attachment] = {};
+  if (physical_aliases_[attachment] != RenderResource::Unused) {
+    physical_image_attachments_[attachment] =
+        physical_image_attachments_[physical_aliases_[attachment]];
+    physical_attachments_[attachment] =
+        &physical_image_attachments_[attachment]->get_view();
+    physical_events_[attachment] = {};
     return;
   }
 
@@ -1764,19 +1767,19 @@ void RenderGraph::setup_physical_image(Vulkan::Device& device,
     usage |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
   }
 
-  if (physical_image_attachments[attachment]) {
+  if (physical_image_attachments_[attachment]) {
     if (att.persistent &&
-        physical_image_attachments[attachment]->get_create_info().format ==
+        physical_image_attachments_[attachment]->get_create_info().format ==
             att.format &&
-        physical_image_attachments[attachment]->get_create_info().width ==
+        physical_image_attachments_[attachment]->get_create_info().width ==
             att.width &&
-        physical_image_attachments[attachment]->get_create_info().height ==
+        physical_image_attachments_[attachment]->get_create_info().height ==
             att.height &&
-        physical_image_attachments[attachment]->get_create_info().samples ==
+        physical_image_attachments_[attachment]->get_create_info().samples ==
             att.samples &&
-        (physical_image_attachments[attachment]->get_create_info().usage &
+        (physical_image_attachments_[attachment]->get_create_info().usage &
          usage) == usage &&
-        (physical_image_attachments[attachment]->get_create_info().flags &
+        (physical_image_attachments_[attachment]->get_create_info().flags &
          flags) == flags) {
       need_image = false;
     }
@@ -1805,49 +1808,50 @@ void RenderGraph::setup_physical_image(Vulkan::Device& device,
                     ? Vulkan::IMAGE_MISC_CONCURRENT_QUEUE_BIT
                     : 0;
 
-    physical_image_attachments[attachment] = device.create_image(info, nullptr);
-    physical_events[attachment] = {};
+    physical_image_attachments_[attachment] =
+        device.create_image(info, nullptr);
+    physical_events_[attachment] = {};
   }
 
-  physical_attachments[attachment] =
-      &physical_image_attachments[attachment]->get_view();
+  physical_attachments_[attachment] =
+      &physical_image_attachments_[attachment]->get_view();
 }
 
 void RenderGraph::setup_attachments(Vulkan::Device& device,
                                     Vulkan::ImageView* swapchain) {
-  physical_attachments.clear();
-  physical_attachments.resize(physical_dimensions.size());
+  physical_attachments_.clear();
+  physical_attachments_.resize(physical_dimensions_.size());
 
   // Try to reuse the buffers if possible.
-  physical_buffers.resize(physical_dimensions.size());
+  physical_buffers_.resize(physical_dimensions_.size());
 
   // Try to reuse render targets if possible.
-  physical_image_attachments.resize(physical_dimensions.size());
-  physical_history_image_attachments.resize(physical_dimensions.size());
-  physical_events.resize(physical_dimensions.size());
-  physical_history_events.resize(physical_dimensions.size());
+  physical_image_attachments_.resize(physical_dimensions_.size());
+  physical_history_image_attachments_.resize(physical_dimensions_.size());
+  physical_events_.resize(physical_dimensions_.size());
+  physical_history_events_.resize(physical_dimensions_.size());
 
-  swapchain_attachment = swapchain;
+  swapchain_attachment_ = swapchain;
 
-  unsigned num_attachments = physical_dimensions.size();
+  unsigned num_attachments = physical_dimensions_.size();
   for (unsigned i = 0; i < num_attachments; i++) {
     // Move over history attachments and events.
-    if (physical_image_has_history[i]) {
-      swap(physical_history_image_attachments[i],
-           physical_image_attachments[i]);
-      swap(physical_history_events[i], physical_events[i]);
+    if (physical_image_has_history_[i]) {
+      swap(physical_history_image_attachments_[i],
+           physical_image_attachments_[i]);
+      swap(physical_history_events_[i], physical_events_[i]);
     }
 
-    auto& att = physical_dimensions[i];
+    auto& att = physical_dimensions_[i];
     if (att.buffer_info.size != 0) {
       setup_physical_buffer(device, i);
     } else {
       if (att.storage)
         setup_physical_image(device, i, true);
-      else if (i == swapchain_physical_index)
-        physical_attachments[i] = swapchain;
+      else if (i == swapchain_physical_index_)
+        physical_attachments_[i] = swapchain;
       else if (att.transient)
-        physical_attachments[i] = &device.get_transient_attachment(
+        physical_attachments_[i] = &device.get_transient_attachment(
             att.width, att.height, att.format, i, att.samples);
       else
         setup_physical_image(device, i, false);
@@ -1855,16 +1859,17 @@ void RenderGraph::setup_attachments(Vulkan::Device& device,
   }
 
   // Assign concrete ImageViews to the render pass.
-  for (auto& physical_pass : physical_passes) {
+  for (auto& physical_pass : physical_passes_) {
     unsigned num_attachments = physical_pass.physical_color_attachments.size();
     for (unsigned i = 0; i < num_attachments; i++)
       physical_pass.render_pass_info.color_attachments[i] =
-          physical_attachments[physical_pass.physical_color_attachments[i]];
+          physical_attachments_[physical_pass.physical_color_attachments[i]];
 
     if (physical_pass.physical_depth_stencil_attachment !=
         RenderResource::Unused)
       physical_pass.render_pass_info.depth_stencil =
-          physical_attachments[physical_pass.physical_depth_stencil_attachment];
+          physical_attachments_[physical_pass
+                                    .physical_depth_stencil_attachment];
     else
       physical_pass.render_pass_info.depth_stencil = nullptr;
   }
@@ -1946,17 +1951,17 @@ void RenderGraph::depend_passes_recursive(
   if (!no_check && passes.empty())
     throw logic_error("No pass exists which writes to resource.");
 
-  if (stack_count > this->passes.size())
+  if (stack_count > this->passes_.size())
     throw logic_error("Cycle detected.");
 
   for (auto& pass : passes)
     if (pass != self.get_index())
-      pass_dependencies[self.get_index()].insert(pass);
+      pass_dependencies_[self.get_index()].insert(pass);
 
   if (merge_dependency)
     for (auto& pass : passes)
       if (pass != self.get_index())
-        pass_merge_dependencies[self.get_index()].insert(pass);
+        pass_merge_dependencies_[self.get_index()].insert(pass);
 
   stack_count++;
 
@@ -1966,8 +1971,8 @@ void RenderGraph::depend_passes_recursive(
     else if (pushed_pass == self.get_index())
       throw logic_error("Pass depends on itself.");
 
-    pass_stack.push_back(pushed_pass);
-    auto& pass = *this->passes[pushed_pass];
+    pass_stack_.push_back(pushed_pass);
+    auto& pass = *this->passes_[pushed_pass];
     traverse_dependencies(pass, stack_count);
   }
 }
@@ -1977,10 +1982,10 @@ void RenderGraph::reorder_passes(std::vector<unsigned>& passes) {
   // copy over dependencies to the dependees to avoid cases which can break
   // subpass merging. This is a "soft" dependency. If we ignore it, it's not a
   // real problem.
-  for (auto& pass_merge_deps : pass_merge_dependencies) {
+  for (auto& pass_merge_deps : pass_merge_dependencies_) {
     auto pass_index =
-        unsigned(&pass_merge_deps - pass_merge_dependencies.data());
-    auto& pass_deps = pass_dependencies[pass_index];
+        unsigned(&pass_merge_deps - pass_merge_dependencies_.data());
+    auto& pass_deps = pass_dependencies_[pass_index];
 
     for (auto& merge_dep : pass_merge_deps) {
       for (auto& dependee : pass_deps) {
@@ -1989,7 +1994,7 @@ void RenderGraph::reorder_passes(std::vector<unsigned>& passes) {
           continue;
 
         if (merge_dep != dependee)
-          pass_dependencies[merge_dep].insert(dependee);
+          pass_dependencies_[merge_dep].insert(dependee);
       }
     }
   }
@@ -2038,7 +2043,8 @@ void RenderGraph::reorder_passes(std::vector<unsigned>& passes) {
       // Always try to merge passes if possible on tilers.
       // This might not make sense on desktop however,
       // so we can conditionally enable this path depending on our GPU.
-      if (pass_merge_dependencies[unscheduled_passes[i]].count(passes.back())) {
+      if (pass_merge_dependencies_[unscheduled_passes[i]].count(
+              passes.back())) {
         overlap_factor = ~0u;
       } else {
         for (auto itr = passes.rbegin(); itr != passes.rend(); ++itr) {
@@ -2074,7 +2080,7 @@ bool RenderGraph::depends_on_pass(unsigned dst_pass, unsigned src_pass) {
   if (dst_pass == src_pass)
     return true;
 
-  for (auto& dep : pass_dependencies[dst_pass]) {
+  for (auto& dep : pass_dependencies_[dst_pass]) {
     if (depends_on_pass(dep, src_pass))
       return true;
   }
@@ -2086,37 +2092,37 @@ void RenderGraph::bake() {
   // First, validate that the graph is sane.
   validate_passes();
 
-  auto itr = resource_to_index.find(backbuffer_source);
-  if (itr == end(resource_to_index))
+  auto itr = resource_to_index_.find(backbuffer_source_);
+  if (itr == end(resource_to_index_))
     throw logic_error("Backbuffer source does not exist.");
 
-  pass_stack.clear();
+  pass_stack_.clear();
 
-  pass_dependencies.clear();
-  pass_merge_dependencies.clear();
-  pass_dependencies.resize(passes.size());
-  pass_merge_dependencies.resize(passes.size());
+  pass_dependencies_.clear();
+  pass_merge_dependencies_.clear();
+  pass_dependencies_.resize(passes_.size());
+  pass_merge_dependencies_.resize(passes_.size());
 
   // Work our way back from the backbuffer, and sort out all the dependencies.
-  auto& backbuffer_resource = *resources[itr->second];
+  auto& backbuffer_resource = *resources_[itr->second];
 
   if (backbuffer_resource.get_write_passes().empty())
     throw logic_error("No pass exists which writes to resource.");
 
   for (auto& pass : backbuffer_resource.get_write_passes())
-    pass_stack.push_back(pass);
+    pass_stack_.push_back(pass);
 
-  auto tmp_pass_stack = pass_stack;
+  auto tmp_pass_stack = pass_stack_;
   for (auto& pushed_pass : tmp_pass_stack) {
-    auto& pass = *passes[pushed_pass];
+    auto& pass = *passes_[pushed_pass];
     traverse_dependencies(pass, 0);
   }
 
-  reverse(begin(pass_stack), end(pass_stack));
-  filter_passes(pass_stack);
+  reverse(begin(pass_stack_), end(pass_stack_));
+  filter_passes(pass_stack_);
 
   // Now, reorder passes to extract better pipelining.
-  reorder_passes(pass_stack);
+  reorder_passes(pass_stack_);
 
   // Now, we have a linear list of passes to submit in-order which would obey
   // the dependencies.
@@ -2141,15 +2147,15 @@ void RenderGraph::bake() {
 
   // Check if the swapchain needs to be blitted to (in case the geometry does
   // not match the backbuffer).
-  swapchain_physical_index =
-      resources[resource_to_index[backbuffer_source]]->get_physical_index();
-  physical_dimensions[swapchain_physical_index].transient = false;
-  physical_dimensions[swapchain_physical_index].persistent =
-      swapchain_dimensions.persistent;
-  if (physical_dimensions[swapchain_physical_index] != swapchain_dimensions)
-    swapchain_physical_index = RenderResource::Unused;
+  swapchain_physical_index_ =
+      resources_[resource_to_index_[backbuffer_source_]]->get_physical_index();
+  physical_dimensions_[swapchain_physical_index_].transient = false;
+  physical_dimensions_[swapchain_physical_index_].persistent =
+      swapchain_dimensions_.persistent;
+  if (physical_dimensions_[swapchain_physical_index_] != swapchain_dimensions_)
+    swapchain_physical_index_ = RenderResource::Unused;
   else
-    physical_dimensions[swapchain_physical_index].transient = true;
+    physical_dimensions_[swapchain_physical_index_].transient = true;
 
   // Based on our render graph, figure out the barriers we actually need.
   // Some barriers are implicit (transients), and some are redundant, i.e. same
@@ -2187,8 +2193,8 @@ ResourceDimensions RenderGraph::get_resource_dimensions(
 
   switch (info.size_class) {
     case SizeClass::SwapchainRelative:
-      dim.width = unsigned(info.size_x * swapchain_dimensions.width);
-      dim.height = unsigned(info.size_y * swapchain_dimensions.height);
+      dim.width = unsigned(info.size_x * swapchain_dimensions_.width);
+      dim.height = unsigned(info.size_y * swapchain_dimensions_.height);
       break;
 
     case SizeClass::Absolute:
@@ -2197,11 +2203,11 @@ ResourceDimensions RenderGraph::get_resource_dimensions(
       break;
 
     case SizeClass::InputRelative: {
-      auto itr = resource_to_index.find(info.size_relative_name);
-      if (itr == end(resource_to_index))
+      auto itr = resource_to_index_.find(info.size_relative_name);
+      if (itr == end(resource_to_index_))
         throw logic_error("Resource does not exist.");
       auto& input =
-          static_cast<RenderTextureResource&>(*resources[itr->second]);
+          static_cast<RenderTextureResource&>(*resources_[itr->second]);
       auto input_dim = get_resource_dimensions(input);
 
       dim.width = unsigned(input_dim.width * info.size_x);
@@ -2212,7 +2218,7 @@ ResourceDimensions RenderGraph::get_resource_dimensions(
   }
 
   if (dim.format == VK_FORMAT_UNDEFINED)
-    dim.format = swapchain_dimensions.format;
+    dim.format = swapchain_dimensions_.format;
 
   const auto num_levels = [](unsigned width, unsigned height) -> unsigned {
     unsigned levels = 0;
@@ -2230,7 +2236,7 @@ ResourceDimensions RenderGraph::get_resource_dimensions(
 }
 
 void RenderGraph::build_physical_barriers() {
-  auto barrier_itr = begin(pass_barriers);
+  auto barrier_itr = begin(pass_barriers_);
 
   const auto flush_access_to_invalidate =
       [](VkAccessFlags flags) -> VkAccessFlags {
@@ -2255,11 +2261,11 @@ void RenderGraph::build_physical_barriers() {
 
   // To handle state inside a physical pass.
   vector<ResourceState> resource_state;
-  resource_state.reserve(physical_dimensions.size());
+  resource_state.reserve(physical_dimensions_.size());
 
-  for (auto& physical_pass : physical_passes) {
+  for (auto& physical_pass : physical_passes_) {
     resource_state.clear();
-    resource_state.resize(physical_dimensions.size());
+    resource_state.resize(physical_dimensions_.size());
 
     // Go over all physical passes, and observe their use of barriers.
     // In multipass, only the first and last barriers need to be considered
@@ -2272,8 +2278,8 @@ void RenderGraph::build_physical_barriers() {
 
       for (auto& invalidate : invalidates) {
         // Transients and swapchain images are handled implicitly.
-        if (physical_dimensions[invalidate.resource_index].transient ||
-            invalidate.resource_index == swapchain_physical_index) {
+        if (physical_dimensions_[invalidate.resource_index].transient ||
+            invalidate.resource_index == swapchain_physical_index_) {
           continue;
         }
 
@@ -2322,8 +2328,8 @@ void RenderGraph::build_physical_barriers() {
 
       for (auto& flush : flushes) {
         // Transients are handled implicitly.
-        if (physical_dimensions[flush.resource_index].transient ||
-            flush.resource_index == swapchain_physical_index) {
+        if (physical_dimensions_[flush.resource_index].transient ||
+            flush.resource_index == swapchain_physical_index_) {
           continue;
         }
 
@@ -2415,8 +2421,8 @@ void RenderGraph::build_physical_barriers() {
 }
 
 void RenderGraph::build_barriers() {
-  pass_barriers.clear();
-  pass_barriers.reserve(pass_stack.size());
+  pass_barriers_.clear();
+  pass_barriers_.reserve(pass_stack_.size());
 
   const auto get_access = [&](vector<Barrier>& barriers, unsigned index,
                               bool history) -> Barrier& {
@@ -2432,8 +2438,8 @@ void RenderGraph::build_barriers() {
     }
   };
 
-  for (auto& index : pass_stack) {
-    auto& pass = *passes[index];
+  for (auto& index : pass_stack_) {
+    auto& pass = *passes_[index];
     Barriers barriers;
 
     const auto get_invalidate_access = [&](unsigned index,
@@ -2602,7 +2608,7 @@ void RenderGraph::build_barriers() {
 
       auto& barrier = get_flush_access(output->get_physical_index());
 
-      if (physical_dimensions[output->get_physical_index()].levels > 1) {
+      if (physical_dimensions_[output->get_physical_index()].levels > 1) {
         // access should be 0 here. generate_mipmaps will take care of
         // invalidation needed.
         barrier.access |= VK_ACCESS_TRANSFER_READ_BIT;  // Validation layers
@@ -2727,7 +2733,7 @@ void RenderGraph::build_barriers() {
       src_barrier.stages |= VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
     }
 
-    pass_barriers.push_back(move(barriers));
+    pass_barriers_.push_back(move(barriers));
   }
 }
 
@@ -2746,18 +2752,18 @@ void RenderGraph::filter_passes(std::vector<unsigned>& list) {
 }
 
 void RenderGraph::reset() {
-  passes.clear();
-  resources.clear();
-  pass_to_index.clear();
-  resource_to_index.clear();
-  physical_passes.clear();
-  physical_dimensions.clear();
-  physical_attachments.clear();
-  physical_buffers.clear();
-  physical_image_attachments.clear();
-  physical_events.clear();
-  physical_history_events.clear();
-  physical_history_image_attachments.clear();
+  passes_.clear();
+  resources_.clear();
+  pass_to_index_.clear();
+  resource_to_index_.clear();
+  physical_passes_.clear();
+  physical_dimensions_.clear();
+  physical_attachments_.clear();
+  physical_buffers_.clear();
+  physical_image_attachments_.clear();
+  physical_events_.clear();
+  physical_history_events_.clear();
+  physical_history_image_attachments_.clear();
 }
 
 }  // namespace Granite

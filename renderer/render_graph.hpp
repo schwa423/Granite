@@ -109,46 +109,46 @@ class RenderResource {
   enum { Unused = ~0u };
 
   RenderResource(Type type, unsigned index)
-      : resource_type(type), index(index) {}
+      : resource_type_(type), index_(index) {}
 
   virtual ~RenderResource() = default;
 
-  Type get_type() const { return resource_type; }
+  Type get_type() const { return resource_type_; }
 
-  void written_in_pass(unsigned index) { written_in_passes.insert(index); }
+  void written_in_pass(unsigned index) { written_in_passes_.insert(index); }
 
-  void read_in_pass(unsigned index) { read_in_passes.insert(index); }
+  void read_in_pass(unsigned index) { read_in_passes_.insert(index); }
 
   const std::unordered_set<unsigned>& get_read_passes() const {
-    return read_in_passes;
+    return read_in_passes_;
   }
 
   const std::unordered_set<unsigned>& get_write_passes() const {
-    return written_in_passes;
+    return written_in_passes_;
   }
 
-  unsigned get_index() const { return index; }
+  unsigned get_index() const { return index_; }
 
-  void set_physical_index(unsigned index) { physical_index = index; }
+  void set_physical_index(unsigned index) { physical_index_ = index; }
 
-  unsigned get_physical_index() const { return physical_index; }
+  unsigned get_physical_index() const { return physical_index_; }
 
-  void set_name(const std::string& name) { this->name = name; }
+  void set_name(const std::string& name) { name_ = name; }
 
-  const std::string& get_name() const { return name; }
+  const std::string& get_name() const { return name_; }
 
-  void add_stages(VkPipelineStageFlags stages) { used_stages |= stages; }
+  void add_stages(VkPipelineStageFlags stages) { used_stages_ |= stages; }
 
-  VkPipelineStageFlags get_used_stages() const { return used_stages; }
+  VkPipelineStageFlags get_used_stages() const { return used_stages_; }
 
  private:
-  Type resource_type;
-  unsigned index;
-  unsigned physical_index = Unused;
-  std::unordered_set<unsigned> written_in_passes;
-  std::unordered_set<unsigned> read_in_passes;
-  std::string name;
-  VkPipelineStageFlags used_stages = 0;
+  Type resource_type_;
+  unsigned index_;
+  unsigned physical_index_ = Unused;
+  std::unordered_set<unsigned> written_in_passes_;
+  std::unordered_set<unsigned> read_in_passes_;
+  std::string name_;
+  VkPipelineStageFlags used_stages_ = 0;
 };
 
 class RenderBufferResource : public RenderResource {
@@ -156,12 +156,12 @@ class RenderBufferResource : public RenderResource {
   RenderBufferResource(unsigned index)
       : RenderResource(RenderResource::Type::Buffer, index) {}
 
-  void set_buffer_info(const BufferInfo& info) { this->info = info; }
+  void set_buffer_info(const BufferInfo& info) { this->info_ = info; }
 
-  const BufferInfo& get_buffer_info() const { return info; }
+  const BufferInfo& get_buffer_info() const { return info_; }
 
  private:
-  BufferInfo info;
+  BufferInfo info_;
 };
 
 class RenderTextureResource : public RenderResource {
@@ -169,36 +169,36 @@ class RenderTextureResource : public RenderResource {
   RenderTextureResource(unsigned index)
       : RenderResource(RenderResource::Type::Texture, index) {}
 
-  void set_attachment_info(const AttachmentInfo& info) { this->info = info; }
+  void set_attachment_info(const AttachmentInfo& info) { info_ = info; }
 
-  const AttachmentInfo& get_attachment_info() const { return info; }
+  const AttachmentInfo& get_attachment_info() const { return info_; }
 
-  void set_transient_state(bool enable) { transient = enable; }
+  void set_transient_state(bool enable) { transient_ = enable; }
 
-  bool get_transient_state() const { return transient; }
+  bool get_transient_state() const { return transient_; }
 
-  void set_storage_state(bool enable) { storage = enable; }
+  void set_storage_state(bool enable) { storage_ = enable; }
 
-  bool get_storage_state() const { return storage; }
+  bool get_storage_state() const { return storage_; }
 
  private:
-  AttachmentInfo info;
-  bool transient = false;
-  bool storage = false;
+  AttachmentInfo info_;
+  bool transient_ = false;
+  bool storage_ = false;
 };
 
 class RenderPass {
  public:
   RenderPass(RenderGraph& graph, unsigned index, VkPipelineStageFlags stages)
-      : graph(graph), index(index), stages(stages) {}
+      : graph_(graph), index_(index), stages_(stages) {}
 
   enum { Unused = ~0u };
 
-  VkPipelineStageFlags get_stages() const { return stages; }
+  VkPipelineStageFlags get_stages() const { return stages_; }
 
-  RenderGraph& get_graph() { return graph; }
+  RenderGraph& get_graph() { return graph_; }
 
-  unsigned get_index() const { return index; }
+  unsigned get_index() const { return index_; }
 
   RenderTextureResource& set_depth_stencil_input(const std::string& name);
   RenderTextureResource& set_depth_stencil_output(const std::string& name,
@@ -229,166 +229,166 @@ class RenderPass {
                           Vulkan::StockSampler sampler);
 
   void make_color_input_scaled(unsigned index) {
-    std::swap(color_scale_inputs[index], color_inputs[index]);
+    std::swap(color_scale_inputs_[index], color_inputs_[index]);
   }
 
   const std::vector<RenderTextureResource*>& get_color_outputs() const {
-    return color_outputs;
+    return color_outputs_;
   }
 
   const std::vector<RenderTextureResource*>& get_resolve_outputs() const {
-    return resolve_outputs;
+    return resolve_outputs_;
   }
 
   const std::vector<RenderTextureResource*>& get_color_inputs() const {
-    return color_inputs;
+    return color_inputs_;
   }
 
   const std::vector<RenderTextureResource*>& get_color_scale_inputs() const {
-    return color_scale_inputs;
+    return color_scale_inputs_;
   }
 
   const std::vector<RenderTextureResource*>& get_texture_inputs() const {
-    return texture_inputs;
+    return texture_inputs_;
   }
 
   const std::vector<RenderTextureResource*>& get_storage_texture_outputs()
       const {
-    return storage_texture_outputs;
+    return storage_texture_outputs_;
   }
 
   const std::vector<RenderTextureResource*>& get_storage_texture_inputs()
       const {
-    return storage_texture_inputs;
+    return storage_texture_inputs_;
   }
 
   const std::vector<RenderTextureResource*>& get_attachment_inputs() const {
-    return attachments_inputs;
+    return attachments_inputs_;
   }
 
   const std::vector<RenderTextureResource*>& get_history_inputs() const {
-    return history_inputs;
+    return history_inputs_;
   }
 
   const std::vector<RenderBufferResource*>& get_uniform_inputs() const {
-    return uniform_inputs;
+    return uniform_inputs_;
   }
 
   const std::vector<RenderBufferResource*>& get_storage_inputs() const {
-    return storage_inputs;
+    return storage_inputs_;
   }
 
   const std::vector<RenderBufferResource*>& get_storage_read_inputs() const {
-    return storage_read_inputs;
+    return storage_read_inputs_;
   }
 
   const std::vector<RenderBufferResource*>& get_storage_outputs() const {
-    return storage_outputs;
+    return storage_outputs_;
   }
 
   RenderTextureResource* get_depth_stencil_input() const {
-    return depth_stencil_input;
+    return depth_stencil_input_;
   }
 
   RenderTextureResource* get_depth_stencil_output() const {
-    return depth_stencil_output;
+    return depth_stencil_output_;
   }
 
-  unsigned get_physical_pass_index() const { return physical_pass; }
+  unsigned get_physical_pass_index() const { return physical_pass_; }
 
-  void set_physical_pass_index(unsigned index) { physical_pass = index; }
+  void set_physical_pass_index(unsigned index) { physical_pass_ = index; }
 
   bool need_render_pass() {
-    if (need_render_pass_cb)
-      return need_render_pass_cb();
+    if (need_render_pass_cb_)
+      return need_render_pass_cb_();
     else
       return true;
   }
 
   bool get_clear_color(unsigned index, VkClearColorValue* value = nullptr) {
-    if (get_clear_color_cb)
-      return get_clear_color_cb(index, value);
+    if (get_clear_color_cb_)
+      return get_clear_color_cb_(index, value);
     else
       return false;
   }
 
   bool get_clear_depth_stencil(VkClearDepthStencilValue* value = nullptr) {
-    if (get_clear_depth_stencil_cb)
-      return get_clear_depth_stencil_cb(value);
+    if (get_clear_depth_stencil_cb_)
+      return get_clear_depth_stencil_cb_(value);
     else
       return false;
   }
 
   void build_render_pass(Vulkan::CommandBuffer& cmd) {
-    build_render_pass_cb(cmd);
+    build_render_pass_cb_(cmd);
   }
 
   void set_need_render_pass(std::function<bool()> func) {
-    need_render_pass_cb = std::move(func);
+    need_render_pass_cb_ = std::move(func);
   }
 
   void set_build_render_pass(std::function<void(Vulkan::CommandBuffer&)> func) {
-    build_render_pass_cb = std::move(func);
+    build_render_pass_cb_ = std::move(func);
   }
 
   void set_get_clear_depth_stencil(
       std::function<bool(VkClearDepthStencilValue*)> func) {
-    get_clear_depth_stencil_cb = std::move(func);
+    get_clear_depth_stencil_cb_ = std::move(func);
   }
 
   void set_get_clear_color(
       std::function<bool(unsigned, VkClearColorValue*)> func) {
-    get_clear_color_cb = std::move(func);
+    get_clear_color_cb_ = std::move(func);
   }
 
-  void set_name(const std::string& name) { this->name = name; }
+  void set_name(const std::string& name) { name_ = name; }
 
-  const std::string& get_name() const { return name; }
+  const std::string& get_name() const { return name_; }
 
  private:
-  RenderGraph& graph;
-  unsigned index;
-  unsigned physical_pass = Unused;
-  VkPipelineStageFlags stages;
+  RenderGraph& graph_;
+  unsigned index_;
+  unsigned physical_pass_ = Unused;
+  VkPipelineStageFlags stages_;
 
-  std::function<void(Vulkan::CommandBuffer&)> build_render_pass_cb;
-  std::function<bool()> need_render_pass_cb;
-  std::function<bool(VkClearDepthStencilValue*)> get_clear_depth_stencil_cb;
-  std::function<bool(unsigned, VkClearColorValue*)> get_clear_color_cb;
+  std::function<void(Vulkan::CommandBuffer&)> build_render_pass_cb_;
+  std::function<bool()> need_render_pass_cb_;
+  std::function<bool(VkClearDepthStencilValue*)> get_clear_depth_stencil_cb_;
+  std::function<bool(unsigned, VkClearColorValue*)> get_clear_color_cb_;
 
-  std::vector<RenderTextureResource*> color_outputs;
-  std::vector<RenderTextureResource*> resolve_outputs;
-  std::vector<RenderTextureResource*> color_inputs;
-  std::vector<RenderTextureResource*> color_scale_inputs;
-  std::vector<RenderTextureResource*> texture_inputs;
-  std::vector<RenderTextureResource*> storage_texture_inputs;
-  std::vector<RenderTextureResource*> storage_texture_outputs;
-  std::vector<RenderTextureResource*> attachments_inputs;
-  std::vector<RenderTextureResource*> history_inputs;
-  std::vector<RenderBufferResource*> uniform_inputs;
-  std::vector<RenderBufferResource*> storage_outputs;
-  std::vector<RenderBufferResource*> storage_read_inputs;
-  std::vector<RenderBufferResource*> storage_inputs;
-  RenderTextureResource* depth_stencil_input = nullptr;
-  RenderTextureResource* depth_stencil_output = nullptr;
-  std::string name;
+  std::vector<RenderTextureResource*> color_outputs_;
+  std::vector<RenderTextureResource*> resolve_outputs_;
+  std::vector<RenderTextureResource*> color_inputs_;
+  std::vector<RenderTextureResource*> color_scale_inputs_;
+  std::vector<RenderTextureResource*> texture_inputs_;
+  std::vector<RenderTextureResource*> storage_texture_inputs_;
+  std::vector<RenderTextureResource*> storage_texture_outputs_;
+  std::vector<RenderTextureResource*> attachments_inputs_;
+  std::vector<RenderTextureResource*> history_inputs_;
+  std::vector<RenderBufferResource*> uniform_inputs_;
+  std::vector<RenderBufferResource*> storage_outputs_;
+  std::vector<RenderBufferResource*> storage_read_inputs_;
+  std::vector<RenderBufferResource*> storage_inputs_;
+  RenderTextureResource* depth_stencil_input_ = nullptr;
+  RenderTextureResource* depth_stencil_output_ = nullptr;
+  std::string name_;
 };
 
 class RenderGraph : public Vulkan::NoCopyNoMove, public EventHandler {
  public:
   RenderGraph();
 
-  void set_device(Vulkan::Device* device) { this->device = device; }
+  void set_device(Vulkan::Device* device) { device_ = device; }
 
   Vulkan::Device& get_device() {
-    assert(device);
-    return *device;
+    assert(device_);
+    return *device_;
   }
 
   RenderPass& add_pass(const std::string& name, VkPipelineStageFlags stages);
   void set_backbuffer_source(const std::string& name);
   void set_backbuffer_dimensions(const ResourceDimensions& dim) {
-    swapchain_dimensions = dim;
+    swapchain_dimensions_ = dim;
   }
 
   void bake();
@@ -401,19 +401,19 @@ class RenderGraph : public Vulkan::NoCopyNoMove, public EventHandler {
   RenderBufferResource& get_buffer_resource(const std::string& name);
 
   Vulkan::ImageView& get_physical_texture_resource(unsigned index) {
-    assert(physical_attachments[index]);
-    return *physical_attachments[index];
+    assert(physical_attachments_[index]);
+    return *physical_attachments_[index];
   }
 
   Vulkan::ImageView* get_physical_history_texture_resource(unsigned index) {
-    if (!physical_history_image_attachments[index])
+    if (!physical_history_image_attachments_[index])
       return nullptr;
-    return &physical_history_image_attachments[index]->get_view();
+    return &physical_history_image_attachments_[index]->get_view();
   }
 
   Vulkan::Buffer& get_physical_buffer_resource(unsigned index) {
-    assert(physical_buffers[index]);
-    return *physical_buffers[index];
+    assert(physical_buffers_[index]);
+    return *physical_buffers_[index];
   }
 
   // For keeping feed-back resources alive during rebaking.
@@ -427,14 +427,14 @@ class RenderGraph : public Vulkan::NoCopyNoMove, public EventHandler {
   void install_physical_buffers(std::vector<Vulkan::BufferHandle> buffers);
 
  private:
-  Vulkan::Device* device = nullptr;
-  std::vector<std::unique_ptr<RenderPass>> passes;
-  std::vector<std::unique_ptr<RenderResource>> resources;
-  std::unordered_map<std::string, unsigned> pass_to_index;
-  std::unordered_map<std::string, unsigned> resource_to_index;
-  std::string backbuffer_source;
+  Vulkan::Device* device_ = nullptr;
+  std::vector<std::unique_ptr<RenderPass>> passes_;
+  std::vector<std::unique_ptr<RenderResource>> resources_;
+  std::unordered_map<std::string, unsigned> pass_to_index_;
+  std::unordered_map<std::string, unsigned> resource_to_index_;
+  std::string backbuffer_source_;
 
-  std::vector<unsigned> pass_stack;
+  std::vector<unsigned> pass_stack_;
 
   struct Barrier {
     unsigned resource_index;
@@ -449,7 +449,7 @@ class RenderGraph : public Vulkan::NoCopyNoMove, public EventHandler {
     std::vector<Barrier> flush;
   };
 
-  std::vector<Barriers> pass_barriers;
+  std::vector<Barriers> pass_barriers_;
 
   void filter_passes(std::vector<unsigned>& list);
   void validate_passes();
@@ -459,7 +459,7 @@ class RenderGraph : public Vulkan::NoCopyNoMove, public EventHandler {
       const RenderBufferResource& resource) const;
   ResourceDimensions get_resource_dimensions(
       const RenderTextureResource& resource) const;
-  ResourceDimensions swapchain_dimensions;
+  ResourceDimensions swapchain_dimensions_;
 
   struct ColorClearRequest {
     RenderPass* pass;
@@ -503,7 +503,7 @@ class RenderGraph : public Vulkan::NoCopyNoMove, public EventHandler {
     std::vector<std::vector<ScaledClearRequests>> scaled_clear_requests;
     std::vector<MipmapRequests> mipmap_requests;
   };
-  std::vector<PhysicalPass> physical_passes;
+  std::vector<PhysicalPass> physical_passes_;
   void build_physical_passes();
   void build_transients();
   void build_physical_resources();
@@ -511,11 +511,11 @@ class RenderGraph : public Vulkan::NoCopyNoMove, public EventHandler {
   void build_render_pass_info();
   void build_aliases();
 
-  std::vector<ResourceDimensions> physical_dimensions;
-  std::vector<Vulkan::ImageView*> physical_attachments;
-  std::vector<Vulkan::BufferHandle> physical_buffers;
-  std::vector<Vulkan::ImageHandle> physical_image_attachments;
-  std::vector<Vulkan::ImageHandle> physical_history_image_attachments;
+  std::vector<ResourceDimensions> physical_dimensions_;
+  std::vector<Vulkan::ImageView*> physical_attachments_;
+  std::vector<Vulkan::BufferHandle> physical_buffers_;
+  std::vector<Vulkan::ImageHandle> physical_image_attachments_;
+  std::vector<Vulkan::ImageHandle> physical_history_image_attachments_;
 
   struct PipelineEvent {
     Vulkan::PipelineEvent event;
@@ -530,13 +530,13 @@ class RenderGraph : public Vulkan::NoCopyNoMove, public EventHandler {
     VkAccessFlags invalidated_in_stage[32] = {};
   };
 
-  std::vector<PipelineEvent> physical_events;
-  std::vector<PipelineEvent> physical_history_events;
-  std::vector<bool> physical_image_has_history;
-  std::vector<unsigned> physical_aliases;
+  std::vector<PipelineEvent> physical_events_;
+  std::vector<PipelineEvent> physical_history_events_;
+  std::vector<bool> physical_image_has_history_;
+  std::vector<unsigned> physical_aliases_;
 
-  Vulkan::ImageView* swapchain_attachment = nullptr;
-  unsigned swapchain_physical_index = RenderResource::Unused;
+  Vulkan::ImageView* swapchain_attachment_ = nullptr;
+  unsigned swapchain_physical_index_ = RenderResource::Unused;
 
   void enqueue_scaled_requests(
       Vulkan::CommandBuffer& cmd,
@@ -563,8 +563,8 @@ class RenderGraph : public Vulkan::NoCopyNoMove, public EventHandler {
 
   void traverse_dependencies(const RenderPass& pass, unsigned stack_count);
 
-  std::vector<std::unordered_set<unsigned>> pass_dependencies;
-  std::vector<std::unordered_set<unsigned>> pass_merge_dependencies;
+  std::vector<std::unordered_set<unsigned>> pass_dependencies_;
+  std::vector<std::unordered_set<unsigned>> pass_merge_dependencies_;
   bool depends_on_pass(unsigned dst_pass, unsigned src_pass);
 
   void reorder_passes(std::vector<unsigned>& passes);
