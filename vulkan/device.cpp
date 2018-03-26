@@ -79,6 +79,9 @@ Semaphore Device::request_imported_semaphore(
 }
 #endif
 
+// JJOSH: how do we know that we know all of the VkPipelineStageFlags... what if
+// someone wants to wait for a later stage to be finished?  I guess they simply
+// push their own semaphore.
 void Device::add_wait_semaphore(CommandBuffer::Type type,
                                 Semaphore semaphore,
                                 VkPipelineStageFlags stages) {
@@ -163,13 +166,17 @@ DescriptorSetAllocator* Device::request_descriptor_set_allocator(
 
 void Device::bake_program(Program& program) {
   CombinedResourceLayout layout;
-  if (program.get_shader(ShaderStage::Vertex))
+  if (program.get_shader(ShaderStage::Vertex)) {
+    // JJOSH: where is the shader-stage's attribute_mask set?  and the
+    // render_target_mask?  Answer: seems like SPIR-V introspection.
     layout.attribute_mask =
         program.get_shader(ShaderStage::Vertex)->get_layout().attribute_mask;
-  if (program.get_shader(ShaderStage::Fragment))
+  }
+  if (program.get_shader(ShaderStage::Fragment)) {
     layout.render_target_mask = program.get_shader(ShaderStage::Fragment)
                                     ->get_layout()
                                     .render_target_mask;
+  }
 
   layout.descriptor_set_mask = 0;
 
