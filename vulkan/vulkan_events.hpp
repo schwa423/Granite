@@ -25,99 +25,72 @@
 #include "event.hpp"
 #include "vulkan.hpp"
 
-namespace Vulkan
-{
+namespace Vulkan {
 class Device;
 
+class DeviceCreatedEvent : public Granite::Event {
+ public:
+  GRANITE_EVENT_TYPE_DECL(DeviceCreatedEvent)
 
-class DeviceCreatedEvent : public Granite::Event
-{
-public:
-	GRANITE_EVENT_TYPE_DECL(DeviceCreatedEvent)
+  DeviceCreatedEvent(Device* device) : device(*device) {}
 
-	DeviceCreatedEvent(Device *device)
-		: device(*device)
-	{}
+  Device& get_device() const { return device; }
 
-	Device &get_device() const
-	{
-		return device;
-	}
-
-private:
-	Device &device;
+ private:
+  Device& device;
 };
 
-class SwapchainParameterEvent : public Granite::Event
-{
-public:
-	GRANITE_EVENT_TYPE_DECL(SwapchainParameterEvent)
+class SwapchainParameterEvent : public Granite::Event {
+ public:
+  GRANITE_EVENT_TYPE_DECL(SwapchainParameterEvent)
 
-	SwapchainParameterEvent(Device *device, unsigned width, unsigned height, float aspect_ratio, unsigned count, VkFormat format)
-		: device(*device), width(width), height(height), aspect_ratio(aspect_ratio), image_count(count), format(format)
-	{}
+  SwapchainParameterEvent(Device* device,
+                          unsigned width,
+                          unsigned height,
+                          float aspect_ratio,
+                          unsigned count,
+                          VkFormat format)
+      : device(*device),
+        width(width),
+        height(height),
+        aspect_ratio(aspect_ratio),
+        image_count(count),
+        format(format) {}
 
-	Device &get_device() const
-	{
-		return device;
-	}
+  Device& get_device() const { return device; }
 
-	unsigned get_width() const
-	{
-		return width;
-	}
+  unsigned get_width() const { return width; }
 
-	unsigned get_height() const
-	{
-		return height;
-	}
+  unsigned get_height() const { return height; }
 
-	float get_aspect_ratio() const
-	{
-		return aspect_ratio;
-	}
+  float get_aspect_ratio() const { return aspect_ratio; }
 
-	unsigned get_image_count() const
-	{
-		return image_count;
-	}
+  unsigned get_image_count() const { return image_count; }
 
-	VkFormat get_format() const
-	{
-		return format;
-	}
+  VkFormat get_format() const { return format; }
 
-private:
-	Device &device;
-	unsigned width;
-	unsigned height;
-	float aspect_ratio;
-	unsigned image_count;
-	VkFormat format;
+ private:
+  Device& device;
+  unsigned width;
+  unsigned height;
+  float aspect_ratio;
+  unsigned image_count;
+  VkFormat format;
 };
 
+class SwapchainIndexEvent : public Granite::Event {
+ public:
+  GRANITE_EVENT_TYPE_DECL(SwapchainIndexEvent)
 
-class SwapchainIndexEvent : public Granite::Event
-{
-public:
-	GRANITE_EVENT_TYPE_DECL(SwapchainIndexEvent)
+  SwapchainIndexEvent(Device* device, unsigned index)
+      : device(*device), index(index) {}
 
-	SwapchainIndexEvent(Device *device, unsigned index)
-		: device(*device), index(index)
-	{}
+  Device& get_device() const { return device; }
 
-	Device &get_device() const
-	{
-		return device;
-	}
+  unsigned get_index() const { return index; }
 
-	unsigned get_index() const
-	{
-		return index;
-	}
-
-private:
-	Device &device;
-	unsigned index;
+ private:
+  Device& device;
+  unsigned index;
 };
-}
+}  // namespace Vulkan

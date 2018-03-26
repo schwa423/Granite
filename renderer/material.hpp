@@ -22,84 +22,82 @@
 
 #pragma once
 
-#include "image.hpp"
-#include "math.hpp"
-#include "intrusive.hpp"
-#include "texture_manager.hpp"
-#include "enum_cast.hpp"
-#include "sampler.hpp"
 #include "abstract_renderable.hpp"
+#include "enum_cast.hpp"
 #include "hashmap.hpp"
+#include "image.hpp"
+#include "intrusive.hpp"
+#include "math.hpp"
+#include "sampler.hpp"
+#include "texture_manager.hpp"
 
-namespace Granite
-{
-struct Material : public Util::IntrusivePtrEnabled<Material>
-{
-	virtual ~Material() = default;
+namespace Granite {
+struct Material : public Util::IntrusivePtrEnabled<Material> {
+  virtual ~Material() = default;
 
-	enum class Textures : unsigned
-	{
-		BaseColor = 0,
-		Normal = 1,
-		MetallicRoughness = 2,
-		Occlusion = 3,
-		Emissive = 4,
-		Count
-	};
+  enum class Textures : unsigned {
+    BaseColor = 0,
+    Normal = 1,
+    MetallicRoughness = 2,
+    Occlusion = 3,
+    Emissive = 4,
+    Count
+  };
 
-	Vulkan::Texture *textures[Util::ecast(Textures::Count)];
-	vec4 base_color = vec4(1.0f);
-	vec3 emissive = vec3(0.0f);
-	float roughness = 1.0f;
-	float metallic = 1.0f;
-	float lod_bias = 0.0f;
-	float normal_scale = 1.0f;
-	DrawPipeline pipeline = DrawPipeline::Opaque;
-	Vulkan::StockSampler sampler = Vulkan::StockSampler::TrilinearWrap;
-	bool two_sided = false;
-	bool needs_emissive = false;
+  Vulkan::Texture* textures[Util::ecast(Textures::Count)];
+  vec4 base_color = vec4(1.0f);
+  vec3 emissive = vec3(0.0f);
+  float roughness = 1.0f;
+  float metallic = 1.0f;
+  float lod_bias = 0.0f;
+  float normal_scale = 1.0f;
+  DrawPipeline pipeline = DrawPipeline::Opaque;
+  Vulkan::StockSampler sampler = Vulkan::StockSampler::TrilinearWrap;
+  bool two_sided = false;
+  bool needs_emissive = false;
 
-	void bake()
-	{
-		Util::Hasher h;
-		for (auto &tex : textures)
-			h.pointer(tex);
-		for (unsigned i = 0; i < 4; i++)
-			h.f32(base_color[i]);
-		for (unsigned i = 0; i < 3; i++)
-			h.f32(emissive[i]);
-		h.f32(roughness);
-		h.f32(metallic);
-		h.f32(lod_bias);
-		h.f32(normal_scale);
-		h.u32(Util::ecast(pipeline));
-		h.u32(Util::ecast(sampler));
-		h.u32(two_sided);
-		hash = h.get();
-		needs_emissive = any(notEqual(emissive, vec3(0.0f)));
-	}
+  void bake() {
+    Util::Hasher h;
+    for (auto& tex : textures)
+      h.pointer(tex);
+    for (unsigned i = 0; i < 4; i++)
+      h.f32(base_color[i]);
+    for (unsigned i = 0; i < 3; i++)
+      h.f32(emissive[i]);
+    h.f32(roughness);
+    h.f32(metallic);
+    h.f32(lod_bias);
+    h.f32(normal_scale);
+    h.u32(Util::ecast(pipeline));
+    h.u32(Util::ecast(sampler));
+    h.u32(two_sided);
+    hash = h.get();
+    needs_emissive = any(notEqual(emissive, vec3(0.0f)));
+  }
 
-	uint64_t get_hash() const
-	{
-		assert(hash);
-		return hash;
-	}
+  uint64_t get_hash() const {
+    assert(hash);
+    return hash;
+  }
 
-private:
-	uint64_t hash = 0;
+ private:
+  uint64_t hash = 0;
 };
 
-enum MaterialTextureFlagBits
-{
-	MATERIAL_TEXTURE_BASE_COLOR_BIT = 1u << Util::ecast(Material::Textures::BaseColor),
-	MATERIAL_TEXTURE_NORMAL_BIT = 1u << Util::ecast(Material::Textures::Normal),
-	MATERIAL_TEXTURE_METALLIC_ROUGHNESS_BIT = 1u << Util::ecast(Material::Textures::MetallicRoughness),
-	MATERIAL_TEXTURE_OCCLUSION_BIT = 1u << Util::ecast(Material::Textures::Occlusion),
-	MATERIAL_TEXTURE_EMISSIVE_BIT = 1u << Util::ecast(Material::Textures::Emissive),
-	MATERIAL_EMISSIVE_BIT = 1u << 5,
-	MATERIAL_EMISSIVE_REFRACTION_BIT = 1u << 6,
-	MATERIAL_EMISSIVE_REFLECTION_BIT = 1u << 7
+enum MaterialTextureFlagBits {
+  MATERIAL_TEXTURE_BASE_COLOR_BIT =
+      1u << Util::ecast(Material::Textures::BaseColor),
+  MATERIAL_TEXTURE_NORMAL_BIT = 1u << Util::ecast(Material::Textures::Normal),
+  MATERIAL_TEXTURE_METALLIC_ROUGHNESS_BIT =
+      1u << Util::ecast(Material::Textures::MetallicRoughness),
+  MATERIAL_TEXTURE_OCCLUSION_BIT =
+      1u << Util::ecast(Material::Textures::Occlusion),
+  MATERIAL_TEXTURE_EMISSIVE_BIT = 1u
+                                  << Util::ecast(Material::Textures::Emissive),
+  MATERIAL_EMISSIVE_BIT = 1u << 5,
+  MATERIAL_EMISSIVE_REFRACTION_BIT = 1u << 6,
+  MATERIAL_EMISSIVE_REFLECTION_BIT = 1u << 7
 };
 
 using MaterialHandle = Util::IntrusivePtr<Material>;
-}
+}  // namespace Granite

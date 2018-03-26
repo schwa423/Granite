@@ -22,82 +22,73 @@
 
 #pragma once
 
-#include "math.hpp"
 #include "event.hpp"
-#include "vulkan_events.hpp"
 #include "input.hpp"
+#include "math.hpp"
+#include "vulkan_events.hpp"
 
-namespace Granite
-{
-class Camera
-{
-public:
-	virtual ~Camera() = default;
+namespace Granite {
+class Camera {
+ public:
+  virtual ~Camera() = default;
 
-	mat4 get_projection() const;
+  mat4 get_projection() const;
 
-	mat4 get_view() const;
+  mat4 get_view() const;
 
-	void set_depth_range(float znear, float zfar);
+  void set_depth_range(float znear, float zfar);
 
-	void set_fovy(float fovy);
+  void set_fovy(float fovy);
 
-	void set_aspect(float aspect);
+  void set_aspect(float aspect);
 
-	vec3 get_front() const;
+  vec3 get_front() const;
 
-	vec3 get_right() const;
+  vec3 get_right() const;
 
-	vec3 get_up() const;
+  vec3 get_up() const;
 
-	vec3 get_position() const;
+  vec3 get_position() const;
 
-	const quat &get_rotation() const
-	{
-		return rotation;
-	}
+  const quat& get_rotation() const { return rotation; }
 
-	void set_position(const vec3 &pos);
+  void set_position(const vec3& pos);
 
-	void set_rotation(const quat &rot);
+  void set_rotation(const quat& rot);
 
-	void look_at(const vec3 &eye, const vec3 &at, const vec3 &up = vec3(0.0f, 1.0f, 0.0f));
+  void look_at(const vec3& eye,
+               const vec3& at,
+               const vec3& up = vec3(0.0f, 1.0f, 0.0f));
 
-	float get_znear() const
-	{
-		return znear;
-	}
+  float get_znear() const { return znear; }
 
-	float get_zfar() const
-	{
-		return zfar;
-	}
+  float get_zfar() const { return zfar; }
 
-	void set_transform(const mat4 &m);
+  void set_transform(const mat4& m);
 
-protected:
-	vec3 position = vec3(0.0f);
-	quat rotation = quat(1.0f, 0.0f, 0.0f, 0.0f);
-	float fovy = 0.5f * glm::half_pi<float>();
-	float aspect = 16.0f / 9.0f;
-	float znear = 1.0f;
-	float zfar = 1000.0f;
-	float transform_z_scale = 1.0f;
+ protected:
+  vec3 position = vec3(0.0f);
+  quat rotation = quat(1.0f, 0.0f, 0.0f, 0.0f);
+  float fovy = 0.5f * glm::half_pi<float>();
+  float aspect = 16.0f / 9.0f;
+  float znear = 1.0f;
+  float zfar = 1000.0f;
+  float transform_z_scale = 1.0f;
 };
 
-class FPSCamera : public Camera, public EventHandler
-{
-public:
-	FPSCamera();
-private:
-	bool on_mouse_move(const MouseMoveEvent &e);
-	bool on_input_state(const InputStateEvent &e);
-	bool on_orientation(const OrientationEvent &e);
-	bool on_touch_down(const TouchDownEvent &e);
-	bool on_touch_up(const TouchUpEvent &e);
-	void on_swapchain(const Vulkan::SwapchainParameterEvent &e);
-	bool on_joypad_state(const JoypadStateEvent &e);
+class FPSCamera : public Camera, public EventHandler {
+ public:
+  FPSCamera();
 
-	unsigned pointer_count = 0;
+ private:
+  bool on_mouse_move(const MouseMoveEvent& e);
+  bool on_input_state(const InputStateEvent& e);
+  bool on_orientation(const OrientationEvent& e);
+  bool on_touch_down(const TouchDownEvent& e);
+  bool on_touch_up(const TouchUpEvent& e);
+  void on_swapchain(const Vulkan::SwapchainParameterEvent& e);
+  bool on_joypad_state(const JoypadStateEvent& e);
+
+  unsigned pointer_count = 0;
 };
-}
+}  // namespace Granite

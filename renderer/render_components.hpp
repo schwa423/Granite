@@ -23,16 +23,15 @@
 #pragma once
 
 #include <render_parameters.hpp>
+#include "aabb.hpp"
+#include "abstract_renderable.hpp"
+#include "camera.hpp"
 #include "ecs.hpp"
 #include "math.hpp"
-#include "aabb.hpp"
 #include "mesh.hpp"
-#include "abstract_renderable.hpp"
 #include "renderer_enums.hpp"
-#include "camera.hpp"
 
-namespace Granite
-{
+namespace Granite {
 class RenderGraph;
 class Renderer;
 class RenderQueue;
@@ -41,140 +40,111 @@ class RenderPass;
 class Scene;
 class Ground;
 
-struct Transform
-{
-	vec3 scale = vec3(1.0f);
-	vec3 translation = vec3(0.0f);
-	quat rotation = quat(1.0f, 0.0f, 0.0f, 0.0f);
+struct Transform {
+  vec3 scale = vec3(1.0f);
+  vec3 translation = vec3(0.0f);
+  quat rotation = quat(1.0f, 0.0f, 0.0f, 0.0f);
 };
 
-struct CachedTransform
-{
-	mat4 world_transform;
-	mat4 normal_transform;
+struct CachedTransform {
+  mat4 world_transform;
+  mat4 normal_transform;
 };
 
-struct CachedSkinTransform
-{
-	std::vector<mat4> bone_world_transforms;
-	std::vector<mat4> bone_normal_transforms;
+struct CachedSkinTransform {
+  std::vector<mat4> bone_world_transforms;
+  std::vector<mat4> bone_normal_transforms;
 };
 
-struct BoundedComponent : ComponentBase
-{
-	AABB aabb;
+struct BoundedComponent : ComponentBase {
+  AABB aabb;
 };
 
-struct UnboundedComponent : ComponentBase
-{
+struct UnboundedComponent : ComponentBase {};
+
+struct EnvironmentComponent : ComponentBase {
+  FogParameters fog;
 };
 
-struct EnvironmentComponent : ComponentBase
-{
-	FogParameters fog;
+struct IBLComponent : ComponentBase {
+  std::string reflection_path;
+  std::string irradiance_path;
 };
 
-struct IBLComponent : ComponentBase
-{
-	std::string reflection_path;
-	std::string irradiance_path;
+struct RenderableComponent : ComponentBase {
+  AbstractRenderableHandle renderable;
 };
 
-struct RenderableComponent : ComponentBase
-{
-	AbstractRenderableHandle renderable;
+struct CameraComponent : ComponentBase {
+  Camera camera;
 };
 
-struct CameraComponent : ComponentBase
-{
-	Camera camera;
+struct RenderPassCreator {
+  virtual ~RenderPassCreator() = default;
+  virtual void add_render_passes(RenderGraph& graph) = 0;
+  virtual void set_base_renderer(Renderer* renderer) = 0;
+  virtual void set_base_render_context(const RenderContext* context) = 0;
+  virtual void setup_render_pass_dependencies(RenderGraph& graph,
+                                              RenderPass& target) = 0;
+  virtual void setup_render_pass_resources(RenderGraph& graph) = 0;
+  virtual void set_scene(Scene* scene) = 0;
+  virtual RendererType get_renderer_type() = 0;
 };
 
-struct RenderPassCreator
-{
-	virtual ~RenderPassCreator() = default;
-	virtual void add_render_passes(RenderGraph &graph) = 0;
-	virtual void set_base_renderer(Renderer *renderer) = 0;
-	virtual void set_base_render_context(const RenderContext *context) = 0;
-	virtual void setup_render_pass_dependencies(RenderGraph &graph, RenderPass &target) = 0;
-	virtual void setup_render_pass_resources(RenderGraph &graph) = 0;
-	virtual void set_scene(Scene *scene) = 0;
-	virtual RendererType get_renderer_type() = 0;
+struct RenderPassSinkComponent : ComponentBase {};
+
+struct CullPlaneComponent : ComponentBase {
+  vec4 plane;
 };
 
-struct RenderPassSinkComponent : ComponentBase
-{
+struct GroundComponent : ComponentBase {
+  Ground* ground = nullptr;
 };
 
-struct CullPlaneComponent : ComponentBase
-{
-	vec4 plane;
+struct RenderPassComponent : ComponentBase {
+  RenderPassCreator* creator = nullptr;
 };
 
-struct GroundComponent : ComponentBase
-{
-	Ground *ground = nullptr;
+struct PerFrameRefreshableTransform {
+  virtual ~PerFrameRefreshableTransform() = default;
+  virtual void refresh(RenderContext& context,
+                       const CachedSpatialTransformComponent* transform) = 0;
 };
 
-struct RenderPassComponent : ComponentBase
-{
-	RenderPassCreator *creator = nullptr;
+struct PerFrameRefreshable {
+  virtual ~PerFrameRefreshable() = default;
+  virtual void refresh(RenderContext& context) = 0;
 };
 
-struct PerFrameRefreshableTransform
-{
-	virtual ~PerFrameRefreshableTransform() = default;
-	virtual void refresh(RenderContext &context, const CachedSpatialTransformComponent *transform) = 0;
+struct PerFrameUpdateTransformComponent : ComponentBase {
+  PerFrameRefreshableTransform* refresh = nullptr;
 };
 
-struct PerFrameRefreshable
-{
-	virtual ~PerFrameRefreshable() = default;
-	virtual void refresh(RenderContext &context) = 0;
+struct PerFrameUpdateComponent : ComponentBase {
+  PerFrameRefreshable* refresh = nullptr;
 };
 
-struct PerFrameUpdateTransformComponent : ComponentBase
-{
-	PerFrameRefreshableTransform *refresh = nullptr;
+struct CachedSpatialTransformComponent : ComponentBase {
+  AABB world_aabb;
+  CachedTransform* transform = nullptr;
+  CachedSkinTransform* skin_transform = nullptr;
 };
 
-struct PerFrameUpdateComponent : ComponentBase
-{
-	PerFrameRefreshable *refresh = nullptr;
+struct CachedTransformComponent : ComponentBase {
+  CachedTransform* transform = nullptr;
 };
 
-struct CachedSpatialTransformComponent : ComponentBase
-{
-	AABB world_aabb;
-	CachedTransform *transform = nullptr;
-	CachedSkinTransform *skin_transform = nullptr;
+struct CachedSpatialTransformTimestampComponent : ComponentBase {
+  uint32_t last_timestamp = ~0u;
+  const uint32_t* current_timestamp = nullptr;
 };
 
-struct CachedTransformComponent : ComponentBase
-{
-	CachedTransform *transform = nullptr;
-};
+struct OpaqueComponent : ComponentBase {};
 
-struct CachedSpatialTransformTimestampComponent : ComponentBase
-{
-	uint32_t last_timestamp = ~0u;
-	const uint32_t *current_timestamp = nullptr;
-};
+struct TransparentComponent : ComponentBase {};
 
-struct OpaqueComponent : ComponentBase
-{
-};
+struct CastsStaticShadowComponent : ComponentBase {};
 
-struct TransparentComponent : ComponentBase
-{
-};
+struct CastsDynamicShadowComponent : ComponentBase {};
 
-struct CastsStaticShadowComponent : ComponentBase
-{
-};
-
-struct CastsDynamicShadowComponent : ComponentBase
-{
-};
-
-}
+}  // namespace Granite

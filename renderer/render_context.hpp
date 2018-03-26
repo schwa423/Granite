@@ -22,69 +22,48 @@
 
 #pragma once
 
-#include "math.hpp"
-#include "scene.hpp"
-#include "render_queue.hpp"
 #include "camera.hpp"
-#include "render_parameters.hpp"
-#include "frustum.hpp"
 #include "device.hpp"
+#include "frustum.hpp"
+#include "math.hpp"
+#include "render_parameters.hpp"
+#include "render_queue.hpp"
+#include "scene.hpp"
 #include "vulkan_events.hpp"
 
-namespace Granite
-{
+namespace Granite {
 
-class RenderContext : public EventHandler
-{
-public:
-	RenderContext();
+class RenderContext : public EventHandler {
+ public:
+  RenderContext();
 
-	void set_scene(Scene *scene)
-	{
-		this->scene = scene;
-	}
+  void set_scene(Scene* scene) { this->scene = scene; }
 
-	void set_queue(RenderQueue *queue)
-	{
-		this->queue = queue;
-	}
+  void set_queue(RenderQueue* queue) { this->queue = queue; }
 
-	void set_camera(const mat4 &projection, const mat4 &view);
-	void set_camera(const Camera &camera);
+  void set_camera(const mat4& projection, const mat4& view);
+  void set_camera(const Camera& camera);
 
-	const RenderParameters &get_render_parameters() const
-	{
-		return camera;
-	}
+  const RenderParameters& get_render_parameters() const { return camera; }
 
-	void set_lighting_parameters(const LightingParameters *lighting)
-	{
-		this->lighting = lighting;
-	}
+  void set_lighting_parameters(const LightingParameters* lighting) {
+    this->lighting = lighting;
+  }
 
-	const LightingParameters *get_lighting_parameters() const
-	{
-		return lighting;
-	}
+  const LightingParameters* get_lighting_parameters() const { return lighting; }
 
-	const Frustum &get_visibility_frustum() const
-	{
-		return frustum;
-	}
+  const Frustum& get_visibility_frustum() const { return frustum; }
 
-	Vulkan::Device &get_device() const
-	{
-		return *device;
-	}
+  Vulkan::Device& get_device() const { return *device; }
 
-private:
-	void on_device_created(const Vulkan::DeviceCreatedEvent &e);
-	void on_device_destroyed(const Vulkan::DeviceCreatedEvent &e);
-	Vulkan::Device *device = nullptr;
-	Scene *scene = nullptr;
-	RenderQueue *queue = nullptr;
-	RenderParameters camera;
-	const LightingParameters *lighting;
-	Frustum frustum;
+ private:
+  void on_device_created(const Vulkan::DeviceCreatedEvent& e);
+  void on_device_destroyed(const Vulkan::DeviceCreatedEvent& e);
+  Vulkan::Device* device = nullptr;
+  Scene* scene = nullptr;
+  RenderQueue* queue = nullptr;
+  RenderParameters camera;
+  const LightingParameters* lighting;
+  Frustum frustum;
 };
-}
+}  // namespace Granite

@@ -24,98 +24,103 @@
 
 using namespace std;
 
-namespace Granite
-{
-void AnimationSystem::animate(double t)
-{
-	for (auto &animation : animations)
-	{
-		double wrapped_time = fmod(t - animation->start_time, animation->animation.length);
+namespace Granite {
+void AnimationSystem::animate(double t) {
+  for (auto& animation : animations) {
+    double wrapped_time =
+        fmod(t - animation->start_time, animation->animation.length);
 
-		auto target = begin(animation->channel_targets);
-		for (auto &channel : animation->animation.channels)
-		{
-			auto *transform = target->first;
-			auto *node = target->second;
+    auto target = begin(animation->channel_targets);
+    for (auto& channel : animation->animation.channels) {
+      auto* transform = target->first;
+      auto* node = target->second;
 
-			unsigned index;
-			float phase;
-			channel.get_index_phase(float(wrapped_time), index, phase);
+      unsigned index;
+      float phase;
+      channel.get_index_phase(float(wrapped_time), index, phase);
 
-			switch (channel.type)
-			{
-			case Importer::AnimationChannel::Type::Translation:
-				transform->translation = channel.linear.sample(index, phase);
-				break;
-			case Importer::AnimationChannel::Type::Scale:
-				transform->scale = channel.linear.sample(index, phase);
-				break;
-			case Importer::AnimationChannel::Type::Rotation:
-				transform->rotation = channel.spherical.sample(index, phase);
-				break;
-			case Importer::AnimationChannel::Type::CubicTranslation:
-				transform->translation = channel.cubic.sample(index, phase,
-				                                              channel.timestamps[index + 1] - channel.timestamps[index]);
-				break;
-			case Importer::AnimationChannel::Type::CubicScale:
-				transform->scale = channel.cubic.sample(index, phase,
-				                                        channel.timestamps[index + 1] - channel.timestamps[index]);
-				break;
-			}
+      switch (channel.type) {
+        case Importer::AnimationChannel::Type::Translation:
+          transform->translation = channel.linear.sample(index, phase);
+          break;
+        case Importer::AnimationChannel::Type::Scale:
+          transform->scale = channel.linear.sample(index, phase);
+          break;
+        case Importer::AnimationChannel::Type::Rotation:
+          transform->rotation = channel.spherical.sample(index, phase);
+          break;
+        case Importer::AnimationChannel::Type::CubicTranslation:
+          transform->translation = channel.cubic.sample(
+              index, phase,
+              channel.timestamps[index + 1] - channel.timestamps[index]);
+          break;
+        case Importer::AnimationChannel::Type::CubicScale:
+          transform->scale = channel.cubic.sample(
+              index, phase,
+              channel.timestamps[index + 1] - channel.timestamps[index]);
+          break;
+      }
 
-			node->invalidate_cached_transform();
-			++target;
-		}
-	}
+      node->invalidate_cached_transform();
+      ++target;
+    }
+  }
 }
 
-void AnimationSystem::register_animation(const std::string &name, const Importer::Animation &animation)
-{
-	animation_map[name] = animation;
+void AnimationSystem::register_animation(const std::string& name,
+                                         const Importer::Animation& animation) {
+  animation_map[name] = animation;
 }
 
-void AnimationSystem::start_animation(Scene::Node &node, const std::string &name, double start_time, bool repeat)
-{
-	std::vector<std::pair<Transform *, Scene::Node *>> target_nodes;
-	auto &animation = animation_map[name];
-	target_nodes.reserve(animation.channels.size());
+void AnimationSystem::start_animation(Scene::Node& node,
+                                      const std::string& name,
+                                      double start_time,
+                                      bool repeat) {
+  std::vector<std::pair<Transform*, Scene::Node*>> target_nodes;
+  auto& animation = animation_map[name];
+  target_nodes.reserve(animation.channels.size());
 
-	for (auto &channel : animation.channels)
-	{
-		if (channel.joint)
-		{
-			if (node.get_skin().skin.empty())
-				throw logic_error("Node does not have a skin.");
-			if (node.get_skin().skin_compat != animation.skin_compat)
-				throw logic_error("Nodes skin is not compatible with animation skin index.");
+  for (auto& channel : animation.channels) {
+    if (channel.joint) {
+      if (node.get_skin().skin.empty())
+        throw logic_error("Node does not have a skin.");
+      if (node.get_skin().skin_compat != animation.skin_compat)
+        throw logic_error(
+            "Nodes skin is not compatible with animation skin index.");
 
-			target_nodes.push_back({ node.get_skin().skin[channel.joint_index], &node });
-		}
-		else
-			target_nodes.push_back({ &node.transform, &node });
-	}
+      target_nodes.push_back(
+          {node.get_skin().skin[channel.joint_index], &node});
+    } else
+      target_nodes.push_back({&node.transform, &node});
+  }
 
-	animations.emplace_back(new AnimationState(move(target_nodes), animation, start_time, repeat));
+  animations.emplace_back(
+      new AnimationState(move(target_nodes), animation, start_time, repeat));
 }
 
-void AnimationSystem::start_animation(Scene::NodeHandle *node_list, const std::string &name, double start_time, bool repeat)
-{
-	std::vector<std::pair<Transform *, Scene::Node *>> target_nodes;
-	auto &animation = animation_map[name];
-	target_nodes.reserve(animation.channels.size());
+void AnimationSystem::start_animation(Scene::NodeHandle* node_list,
+                                      const std::string& name,
+                                      double start_time,
+                                      bool repeat) {
+  std::vector<std::pair<Transform*, Scene::Node*>> target_nodes;
+  auto& animation = animation_map[name];
+  target_nodes.reserve(animation.channels.size());
 
-	if (animation.skinning)
-		throw logic_error("Cannot start skinning animations without a target base node.");
+  if (animation.skinning)
+    throw logic_error(
+        "Cannot start skinning animations without a target base node.");
 
-	for (auto &channel : animation.channels)
-	{
-		if (channel.joint)
-			throw logic_error("Cannot start skinning animations without a target base node.");
-		else
-			target_nodes.push_back({ &node_list[channel.node_index]->transform, node_list[channel.node_index].get() });
-	}
+  for (auto& channel : animation.channels) {
+    if (channel.joint)
+      throw logic_error(
+          "Cannot start skinning animations without a target base node.");
+    else
+      target_nodes.push_back({&node_list[channel.node_index]->transform,
+                              node_list[channel.node_index].get()});
+  }
 
-	animations.emplace_back(new AnimationState(move(target_nodes), animation, start_time, repeat));
+  animations.emplace_back(
+      new AnimationState(move(target_nodes), animation, start_time, repeat));
 }
 
-}
+}  // namespace Granite

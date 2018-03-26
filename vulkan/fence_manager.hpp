@@ -22,23 +22,21 @@
 
 #pragma once
 
-#include "vulkan.hpp"
 #include <vector>
+#include "vulkan.hpp"
 
-namespace Vulkan
-{
-class FenceManager
-{
-public:
-	FenceManager(VkDevice device);
-	~FenceManager();
+namespace Vulkan {
+class FenceManager {
+ public:
+  FenceManager(VkDevice device);
+  ~FenceManager();
 
-	void begin();
-	VkFence request_cleared_fence();
+  void begin();
+  VkFence request_cleared_fence();
 
-private:
-	VkDevice device;
-	std::vector<VkFence> fences;
-	unsigned index = 0;
+ private:
+  VkDevice device;
+  std::vector<VkFence> fences;
+  unsigned index = 0;
 };
-}
+}  // namespace Vulkan

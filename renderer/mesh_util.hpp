@@ -22,219 +22,202 @@
 
 #pragma once
 
-#include "mesh.hpp"
-#include "vulkan_events.hpp"
 #include "importers.hpp"
+#include "mesh.hpp"
 #include "render_components.hpp"
 #include "render_context.hpp"
+#include "vulkan_events.hpp"
 
-namespace Granite
-{
+namespace Granite {
 class FrameTickEvent;
-class ImportedMesh : public StaticMesh, public EventHandler
-{
-public:
-	ImportedMesh(const Importer::Mesh &mesh, const Importer::MaterialInfo &info);
+class ImportedMesh : public StaticMesh, public EventHandler {
+ public:
+  ImportedMesh(const Importer::Mesh& mesh, const Importer::MaterialInfo& info);
 
-private:
-	Importer::Mesh mesh;
-	Importer::MaterialInfo info;
+ private:
+  Importer::Mesh mesh;
+  Importer::MaterialInfo info;
 
-	void on_device_created(const Vulkan::DeviceCreatedEvent &event);
-	void on_device_destroyed(const Vulkan::DeviceCreatedEvent &event);
+  void on_device_created(const Vulkan::DeviceCreatedEvent& event);
+  void on_device_destroyed(const Vulkan::DeviceCreatedEvent& event);
 };
 
-class ImportedSkinnedMesh : public SkinnedMesh, public EventHandler
-{
-public:
-	ImportedSkinnedMesh(const Importer::Mesh &mesh, const Importer::MaterialInfo &info);
+class ImportedSkinnedMesh : public SkinnedMesh, public EventHandler {
+ public:
+  ImportedSkinnedMesh(const Importer::Mesh& mesh,
+                      const Importer::MaterialInfo& info);
 
-private:
-	Importer::Mesh mesh;
-	Importer::MaterialInfo info;
+ private:
+  Importer::Mesh mesh;
+  Importer::MaterialInfo info;
 
-	void on_device_created(const Vulkan::DeviceCreatedEvent &event);
-	void on_device_destroyed(const Vulkan::DeviceCreatedEvent &event);
+  void on_device_created(const Vulkan::DeviceCreatedEvent& event);
+  void on_device_destroyed(const Vulkan::DeviceCreatedEvent& event);
 };
 
-class CubeMesh : public StaticMesh, public EventHandler
-{
-public:
-	CubeMesh();
+class CubeMesh : public StaticMesh, public EventHandler {
+ public:
+  CubeMesh();
 
-private:
-	void on_device_created(const Vulkan::DeviceCreatedEvent &event);
-	void on_device_destroyed(const Vulkan::DeviceCreatedEvent &event);
+ private:
+  void on_device_created(const Vulkan::DeviceCreatedEvent& event);
+  void on_device_destroyed(const Vulkan::DeviceCreatedEvent& event);
 };
 
-class SphereMesh : public StaticMesh, public EventHandler
-{
-public:
-	SphereMesh(unsigned density = 16);
+class SphereMesh : public StaticMesh, public EventHandler {
+ public:
+  SphereMesh(unsigned density = 16);
 
-private:
-	unsigned density;
-	void on_device_created(const Vulkan::DeviceCreatedEvent &event);
-	void on_device_destroyed(const Vulkan::DeviceCreatedEvent &event);
+ private:
+  unsigned density;
+  void on_device_created(const Vulkan::DeviceCreatedEvent& event);
+  void on_device_destroyed(const Vulkan::DeviceCreatedEvent& event);
 };
 
-class Skybox : public AbstractRenderable, public EventHandler
-{
-public:
-	Skybox(std::string bg_path = "", bool latlon = false);
+class Skybox : public AbstractRenderable, public EventHandler {
+ public:
+  Skybox(std::string bg_path = "", bool latlon = false);
 
-	void get_render_info(const RenderContext &context, const CachedSpatialTransformComponent *transform,
-	                     RenderQueue &queue) const override;
+  void get_render_info(const RenderContext& context,
+                       const CachedSpatialTransformComponent* transform,
+                       RenderQueue& queue) const override;
 
-	void set_color_mod(const vec3 &color)
-	{
-		this->color = color;
-	}
+  void set_color_mod(const vec3& color) { this->color = color; }
 
-	void enable_irradiance(const std::string &path);
-	void enable_reflection(const std::string &path);
+  void enable_irradiance(const std::string& path);
+  void enable_reflection(const std::string& path);
 
-private:
-	Vulkan::Device *device = nullptr;
-	std::string bg_path;
-	std::string irradiance_path;
-	std::string reflection_path;
-	vec3 color = vec3(1.0f);
-	Vulkan::Texture *texture = nullptr;
-	Vulkan::Texture *irradiance_texture = nullptr;
-	Vulkan::Texture *reflection_texture = nullptr;
+ private:
+  Vulkan::Device* device = nullptr;
+  std::string bg_path;
+  std::string irradiance_path;
+  std::string reflection_path;
+  vec3 color = vec3(1.0f);
+  Vulkan::Texture* texture = nullptr;
+  Vulkan::Texture* irradiance_texture = nullptr;
+  Vulkan::Texture* reflection_texture = nullptr;
 
-	void on_device_created(const Vulkan::DeviceCreatedEvent &event);
-	void on_device_destroyed(const Vulkan::DeviceCreatedEvent &event);
+  void on_device_created(const Vulkan::DeviceCreatedEvent& event);
+  void on_device_destroyed(const Vulkan::DeviceCreatedEvent& event);
 
-	bool is_latlon = true;
+  bool is_latlon = true;
 
-	void update_irradiance();
-	void update_reflection();
+  void update_irradiance();
+  void update_reflection();
 };
 
-class SkyCylinder : public AbstractRenderable, public EventHandler
-{
-public:
-	SkyCylinder(std::string bg_path);
+class SkyCylinder : public AbstractRenderable, public EventHandler {
+ public:
+  SkyCylinder(std::string bg_path);
 
-	void get_render_info(const RenderContext &context, const CachedSpatialTransformComponent *transform,
-	                     RenderQueue &queue) const override;
+  void get_render_info(const RenderContext& context,
+                       const CachedSpatialTransformComponent* transform,
+                       RenderQueue& queue) const override;
 
-	void set_color_mod(const vec3 &color)
-	{
-		this->color = color;
-	}
+  void set_color_mod(const vec3& color) { this->color = color; }
 
-	void set_xz_scale(float scale)
-	{
-		this->scale = scale;
-	}
+  void set_xz_scale(float scale) { this->scale = scale; }
 
-private:
-	std::string bg_path;
-	vec3 color = vec3(1.0f);
-	float scale = 1.0f;
-	Vulkan::Texture *texture = nullptr;
+ private:
+  std::string bg_path;
+  vec3 color = vec3(1.0f);
+  float scale = 1.0f;
+  Vulkan::Texture* texture = nullptr;
 
-	void on_device_created(const Vulkan::DeviceCreatedEvent &event);
-	void on_device_destroyed(const Vulkan::DeviceCreatedEvent &event);
+  void on_device_created(const Vulkan::DeviceCreatedEvent& event);
+  void on_device_destroyed(const Vulkan::DeviceCreatedEvent& event);
 
-	Vulkan::BufferHandle vbo;
-	Vulkan::BufferHandle ibo;
-	Vulkan::SamplerHandle sampler;
-	unsigned count = 0;
+  Vulkan::BufferHandle vbo;
+  Vulkan::BufferHandle ibo;
+  Vulkan::SamplerHandle sampler;
+  unsigned count = 0;
 };
 
-class TexturePlane : public AbstractRenderable, public EventHandler, public RenderPassCreator
-{
-public:
-	TexturePlane(const std::string &normal);
+class TexturePlane : public AbstractRenderable,
+                     public EventHandler,
+                     public RenderPassCreator {
+ public:
+  TexturePlane(const std::string& normal);
 
-	void set_reflection_name(const std::string &name)
-	{
-		need_reflection = !name.empty();
-		reflection_name = name;
-	}
+  void set_reflection_name(const std::string& name) {
+    need_reflection = !name.empty();
+    reflection_name = name;
+  }
 
-	void set_refraction_name(const std::string &name)
-	{
-		need_refraction = !name.empty();
-		refraction_name = name;
-	}
+  void set_refraction_name(const std::string& name) {
+    need_refraction = !name.empty();
+    refraction_name = name;
+  }
 
-	void set_resolution_scale(float x, float y)
-	{
-		scale_x = x;
-		scale_y = y;
-	}
+  void set_resolution_scale(float x, float y) {
+    scale_x = x;
+    scale_y = y;
+  }
 
-	vec4 get_plane() const
-	{
-		return vec4(normal, -dot(normal, position));
-	}
+  vec4 get_plane() const { return vec4(normal, -dot(normal, position)); }
 
-	void get_render_info(const RenderContext &context, const CachedSpatialTransformComponent *transform,
-	                     RenderQueue &queue) const override;
+  void get_render_info(const RenderContext& context,
+                       const CachedSpatialTransformComponent* transform,
+                       RenderQueue& queue) const override;
 
-	void set_plane(const vec3 &position, const vec3 &normal, const vec3 &up, float extent_up, float extent_across);
-	void set_base_emissive(const vec3 &color)
-	{
-		base_emissive = color;
-	}
+  void set_plane(const vec3& position,
+                 const vec3& normal,
+                 const vec3& up,
+                 float extent_up,
+                 float extent_across);
+  void set_base_emissive(const vec3& color) { base_emissive = color; }
 
-	void set_zfar(float zfar);
+  void set_zfar(float zfar);
 
-private:
-	std::string normal_path;
-	const Vulkan::ImageView *reflection = nullptr;
-	const Vulkan::ImageView *refraction = nullptr;
-	Vulkan::Texture *normalmap = nullptr;
+ private:
+  std::string normal_path;
+  const Vulkan::ImageView* reflection = nullptr;
+  const Vulkan::ImageView* refraction = nullptr;
+  Vulkan::Texture* normalmap = nullptr;
 
-	vec3 position;
-	vec3 normal;
-	vec3 up;
-	vec3 dpdx;
-	vec3 dpdy;
-	vec3 base_emissive;
-	float rad_up = 0.0f;
-	float rad_x = 0.0f;
-	float zfar = 100.0f;
-	float scale_x = 1.0f;
-	float scale_y = 1.0f;
+  vec3 position;
+  vec3 normal;
+  vec3 up;
+  vec3 dpdx;
+  vec3 dpdy;
+  vec3 base_emissive;
+  float rad_up = 0.0f;
+  float rad_x = 0.0f;
+  float zfar = 100.0f;
+  float scale_x = 1.0f;
+  float scale_y = 1.0f;
 
-	double elapsed = 0.0f;
-	void on_device_created(const Vulkan::DeviceCreatedEvent &event);
-	void on_device_destroyed(const Vulkan::DeviceCreatedEvent &event);
-	bool on_frame_time(const FrameTickEvent &e);
+  double elapsed = 0.0f;
+  void on_device_created(const Vulkan::DeviceCreatedEvent& event);
+  void on_device_destroyed(const Vulkan::DeviceCreatedEvent& event);
+  bool on_frame_time(const FrameTickEvent& e);
 
-	std::string reflection_name;
-	std::string refraction_name;
+  std::string reflection_name;
+  std::string refraction_name;
 
-	Renderer *renderer = nullptr;
-	const RenderContext *base_context = nullptr;
-	RenderContext context;
-	Scene *scene = nullptr;
-	VisibilityList visible;
+  Renderer* renderer = nullptr;
+  const RenderContext* base_context = nullptr;
+  RenderContext context;
+  Scene* scene = nullptr;
+  VisibilityList visible;
 
-	bool need_reflection = false;
-	bool need_refraction = false;
+  bool need_reflection = false;
+  bool need_refraction = false;
 
-	enum Type
-	{
-		Reflection,
-		Refraction
-	};
-	void add_render_pass(RenderGraph &graph, Type type);
+  enum Type { Reflection, Refraction };
+  void add_render_pass(RenderGraph& graph, Type type);
 
-	void add_render_passes(RenderGraph &graph) override;
-	void set_base_renderer(Renderer *renderer) override;
-	void set_base_render_context(const RenderContext *context) override;
-	void setup_render_pass_dependencies(RenderGraph &graph, RenderPass &target) override;
-	void setup_render_pass_resources(RenderGraph &graph) override;
-	void set_scene(Scene *scene) override;
-	RendererType get_renderer_type() override;
+  void add_render_passes(RenderGraph& graph) override;
+  void set_base_renderer(Renderer* renderer) override;
+  void set_base_render_context(const RenderContext* context) override;
+  void setup_render_pass_dependencies(RenderGraph& graph,
+                                      RenderPass& target) override;
+  void setup_render_pass_resources(RenderGraph& graph) override;
+  void set_scene(Scene* scene) override;
+  RendererType get_renderer_type() override;
 
-	void render_main_pass(Vulkan::CommandBuffer &cmd, const mat4 &proj, const mat4 &view);
+  void render_main_pass(Vulkan::CommandBuffer& cmd,
+                        const mat4& proj,
+                        const mat4& view);
 };
-}
+}  // namespace Granite

@@ -22,22 +22,20 @@
 
 #pragma once
 
-#include "vulkan.hpp"
 #include <vector>
+#include "vulkan.hpp"
 
-namespace Vulkan
-{
-class EventManager
-{
-public:
-	void init(VkDevice device);
-	~EventManager();
+namespace Vulkan {
+class EventManager {
+ public:
+  void init(VkDevice device);
+  ~EventManager();
 
-	VkEvent request_cleared_event();
-	void recycle(VkEvent event);
+  VkEvent request_cleared_event();
+  void recycle(VkEvent event);
 
-private:
-	VkDevice device = VK_NULL_HANDLE;
-	std::vector<VkEvent> events;
+ private:
+  VkDevice device = VK_NULL_HANDLE;
+  std::vector<VkEvent> events;
 };
-}
+}  // namespace Vulkan

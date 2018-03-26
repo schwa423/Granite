@@ -22,23 +22,21 @@
 
 #pragma once
 
-#include "material.hpp"
 #include "event.hpp"
+#include "material.hpp"
 #include "vulkan_events.hpp"
 
-namespace Granite
-{
-class StockMaterials : public EventHandler
-{
-public:
-	static StockMaterials &get();
-	MaterialHandle get_checkerboard();
+namespace Granite {
+class StockMaterials : public EventHandler {
+ public:
+  static StockMaterials& get();
+  MaterialHandle get_checkerboard();
 
-private:
-	StockMaterials();
-	void on_device_created(const Vulkan::DeviceCreatedEvent &event);
-	void on_device_destroyed(const Vulkan::DeviceCreatedEvent &event);
+ private:
+  StockMaterials();
+  void on_device_created(const Vulkan::DeviceCreatedEvent& event);
+  void on_device_destroyed(const Vulkan::DeviceCreatedEvent& event);
 
-	MaterialHandle checkerboard;
+  MaterialHandle checkerboard;
 };
-}
+}  // namespace Granite

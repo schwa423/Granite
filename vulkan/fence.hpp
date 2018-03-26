@@ -24,28 +24,19 @@
 
 #include <memory>
 
-namespace Vulkan
-{
+namespace Vulkan {
 class Device;
 
-class FenceHolder
-{
-public:
-	FenceHolder(Device *device, VkFence fence)
-	    : device(device)
-	    , fence(fence)
-	{
-	}
+class FenceHolder {
+ public:
+  FenceHolder(Device* device, VkFence fence) : device(device), fence(fence) {}
 
-	const VkFence &get_fence() const
-	{
-		return fence;
-	}
+  const VkFence& get_fence() const { return fence; }
 
-private:
-	Device *device;
-	VkFence fence;
+ private:
+  Device* device;
+  VkFence fence;
 };
 
 using Fence = std::weak_ptr<FenceHolder>;
-}
+}  // namespace Vulkan

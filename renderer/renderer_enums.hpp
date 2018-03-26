@@ -22,26 +22,23 @@
 
 #pragma once
 
-namespace Granite
-{
-enum class RenderableType
-{
-	Mesh,
-	DebugMesh,
-	Skybox,
-	SkyCylinder,
-	Ground,
-	Sprite,
-	LineUI,
-	TexturePlane,
-	Count
+namespace Granite {
+enum class RenderableType {
+  Mesh,
+  DebugMesh,
+  Skybox,
+  SkyCylinder,
+  Ground,
+  Sprite,
+  LineUI,
+  TexturePlane,
+  Count
 };
 
-enum class RendererType
-{
-	GeneralForward,
-	GeneralDeferred,
-	DepthOnly,
-	External
+enum class RendererType {
+  GeneralForward,
+  GeneralDeferred,
+  DepthOnly,
+  External
 };
-}
+}  // namespace Granite

@@ -22,29 +22,27 @@
 
 #pragma once
 
-#include "vulkan.hpp"
 #include <unordered_set>
 #include <vector>
+#include "vulkan.hpp"
 
-namespace Vulkan
-{
-class CommandPool
-{
-public:
-	CommandPool(VkDevice device, uint32_t queue_family_index);
-	~CommandPool();
+namespace Vulkan {
+class CommandPool {
+ public:
+  CommandPool(VkDevice device, uint32_t queue_family_index);
+  ~CommandPool();
 
-	void begin();
-	VkCommandBuffer request_command_buffer();
-	void signal_submitted(VkCommandBuffer cmd);
+  void begin();
+  VkCommandBuffer request_command_buffer();
+  void signal_submitted(VkCommandBuffer cmd);
 
-private:
-	VkDevice device;
-	VkCommandPool pool;
-	std::vector<VkCommandBuffer> buffers;
+ private:
+  VkDevice device;
+  VkCommandPool pool;
+  std::vector<VkCommandBuffer> buffers;
 #ifdef VULKAN_DEBUG
-	std::unordered_set<VkCommandBuffer> in_flight;
+  std::unordered_set<VkCommandBuffer> in_flight;
 #endif
-	unsigned index = 0;
+  unsigned index = 0;
 };
-}
+}  // namespace Vulkan

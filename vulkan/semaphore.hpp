@@ -25,65 +25,45 @@
 #include "intrusive.hpp"
 #include "vulkan.hpp"
 
-namespace Vulkan
-{
+namespace Vulkan {
 class Device;
 
-class SemaphoreHolder : public Util::IntrusivePtrEnabled<SemaphoreHolder>
-{
-public:
-	SemaphoreHolder(Device *device, VkSemaphore semaphore, bool signalled)
-	    : device(device)
-	    , semaphore(semaphore)
-	    , signalled(signalled)
-	{
-	}
+class SemaphoreHolder : public Util::IntrusivePtrEnabled<SemaphoreHolder> {
+ public:
+  SemaphoreHolder(Device* device, VkSemaphore semaphore, bool signalled)
+      : device(device), semaphore(semaphore), signalled(signalled) {}
 
-	~SemaphoreHolder();
+  ~SemaphoreHolder();
 
-	const VkSemaphore &get_semaphore() const
-	{
-		return semaphore;
-	}
+  const VkSemaphore& get_semaphore() const { return semaphore; }
 
-	bool is_signalled() const
-	{
-		return signalled;
-	}
+  bool is_signalled() const { return signalled; }
 
-	VkSemaphore consume()
-	{
-		auto ret = semaphore;
-		VK_ASSERT(semaphore);
-		VK_ASSERT(signalled);
-		semaphore = VK_NULL_HANDLE;
-		signalled = false;
-		return ret;
-	}
+  VkSemaphore consume() {
+    auto ret = semaphore;
+    VK_ASSERT(semaphore);
+    VK_ASSERT(signalled);
+    semaphore = VK_NULL_HANDLE;
+    signalled = false;
+    return ret;
+  }
 
-	bool can_recycle() const
-	{
-		return !should_destroy_on_consume;
-	}
+  bool can_recycle() const { return !should_destroy_on_consume; }
 
-	void signal_external()
-	{
-		VK_ASSERT(!signalled);
-		VK_ASSERT(semaphore);
-		signalled = true;
-	}
+  void signal_external() {
+    VK_ASSERT(!signalled);
+    VK_ASSERT(semaphore);
+    signalled = true;
+  }
 
-	void destroy_on_consume()
-	{
-		should_destroy_on_consume = true;
-	}
+  void destroy_on_consume() { should_destroy_on_consume = true; }
 
-private:
-	Device *device;
-	VkSemaphore semaphore;
-	bool signalled = true;
-	bool should_destroy_on_consume = false;
+ private:
+  Device* device;
+  VkSemaphore semaphore;
+  bool signalled = true;
+  bool should_destroy_on_consume = false;
 };
 
 using Semaphore = Util::IntrusivePtr<SemaphoreHolder>;
-}
+}  // namespace Vulkan

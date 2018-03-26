@@ -22,40 +22,39 @@
 
 #pragma once
 
-#include "material.hpp"
-#include "volatile_source.hpp"
 #include "device.hpp"
 #include "event.hpp"
 #include "importers.hpp"
+#include "material.hpp"
+#include "volatile_source.hpp"
 #include "vulkan_events.hpp"
 
-namespace Granite
-{
-class MaterialFile : public Material, public Util::VolatileSource<MaterialFile>, public EventHandler
-{
-public:
-	MaterialFile(const std::string &path);
-	MaterialFile(const Importer::MaterialInfo &info);
-	void update(const void *data, size_t size);
+namespace Granite {
+class MaterialFile : public Material,
+                     public Util::VolatileSource<MaterialFile>,
+                     public EventHandler {
+ public:
+  MaterialFile(const std::string& path);
+  MaterialFile(const Importer::MaterialInfo& info);
+  void update(const void* data, size_t size);
 
-private:
-	Vulkan::Device *device = nullptr;
-	std::string paths[Util::ecast(Material::Textures::Count)];
+ private:
+  Vulkan::Device* device = nullptr;
+  std::string paths[Util::ecast(Material::Textures::Count)];
 
-	void on_device_created(const Vulkan::DeviceCreatedEvent &e);
-	void on_device_destroyed(const Vulkan::DeviceCreatedEvent &e);
+  void on_device_created(const Vulkan::DeviceCreatedEvent& e);
+  void on_device_destroyed(const Vulkan::DeviceCreatedEvent& e);
 
-	void init_textures();
+  void init_textures();
 };
 
-class MaterialManager
-{
-public:
-	MaterialHandle request_material(const std::string &path);
-	static MaterialManager &get();
+class MaterialManager {
+ public:
+  MaterialHandle request_material(const std::string& path);
+  static MaterialManager& get();
 
-private:
-	MaterialManager() = default;
-	std::unordered_map<std::string, MaterialHandle> materials;
+ private:
+  MaterialManager() = default;
+  std::unordered_map<std::string, MaterialHandle> materials;
 };
-}
+}  // namespace Granite

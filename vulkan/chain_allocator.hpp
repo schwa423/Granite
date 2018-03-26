@@ -22,51 +22,50 @@
 
 #pragma once
 
+#include <vector>
 #include "buffer.hpp"
 #include "vulkan.hpp"
-#include <vector>
 
-namespace Vulkan
-{
+namespace Vulkan {
 class Device;
-struct ChainDataAllocation
-{
-	const Buffer *buffer;
-	VkDeviceSize offset;
-	void *data;
+struct ChainDataAllocation {
+  const Buffer* buffer;
+  VkDeviceSize offset;
+  void* data;
 };
 
-class ChainAllocator
-{
-public:
-	ChainAllocator(Device *device, VkDeviceSize block_size, VkDeviceSize alignment, VkBufferUsageFlags usage);
-	~ChainAllocator();
+class ChainAllocator {
+ public:
+  ChainAllocator(Device* device,
+                 VkDeviceSize block_size,
+                 VkDeviceSize alignment,
+                 VkBufferUsageFlags usage);
+  ~ChainAllocator();
 
-	ChainDataAllocation allocate(VkDeviceSize size);
-	void discard();
-	void reset();
+  ChainDataAllocation allocate(VkDeviceSize size);
+  void discard();
+  void reset();
 
-	void sync_to_gpu();
+  void sync_to_gpu();
 
-private:
-	Device *device;
-	VkDeviceSize block_size;
-	VkDeviceSize alignment;
-	VkBufferUsageFlags usage;
+ private:
+  Device* device;
+  VkDeviceSize block_size;
+  VkDeviceSize alignment;
+  VkBufferUsageFlags usage;
 
-	struct SyncedBuffer
-	{
-		BufferHandle cpu;
-		BufferHandle gpu;
-	};
+  struct SyncedBuffer {
+    BufferHandle cpu;
+    BufferHandle gpu;
+  };
 
-	std::vector<SyncedBuffer> buffers;
-	std::vector<SyncedBuffer> large_buffers;
-	unsigned chain_index = 0;
-	unsigned start_flush_buffer = 0;
-	VkDeviceSize start_flush_offset = 0;
-	VkDeviceSize offset = 0;
-	VkDeviceSize size = 0;
-	uint8_t *host = nullptr;
+  std::vector<SyncedBuffer> buffers;
+  std::vector<SyncedBuffer> large_buffers;
+  unsigned chain_index = 0;
+  unsigned start_flush_buffer = 0;
+  VkDeviceSize start_flush_offset = 0;
+  VkDeviceSize offset = 0;
+  VkDeviceSize size = 0;
+  uint8_t* host = nullptr;
 };
-}
+}  // namespace Vulkan

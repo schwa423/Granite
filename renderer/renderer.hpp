@@ -22,74 +22,70 @@
 
 #pragma once
 
-#include "vulkan_events.hpp"
+#include "renderer_enums.hpp"
 #include "scene.hpp"
 #include "shader_suite.hpp"
-#include "renderer_enums.hpp"
+#include "vulkan_events.hpp"
 
-namespace Granite
-{
+namespace Granite {
 struct Sprite;
 
-class Renderer : public EventHandler
-{
-public:
-	Renderer(RendererType type = RendererType::GeneralDeferred);
+class Renderer : public EventHandler {
+ public:
+  Renderer(RendererType type = RendererType::GeneralDeferred);
 
-	enum RendererOptionBits
-	{
-		SHADOW_ENABLE_BIT = 1 << 0,
-		SHADOW_CASCADE_ENABLE_BIT = 1 << 1,
-		FOG_ENABLE_BIT = 1 << 2,
-		ENVIRONMENT_ENABLE_BIT = 1 << 3,
-		REFRACTION_ENABLE_BIT = 1 << 4
-	};
-	using RendererOptionFlags = uint32_t;
+  enum RendererOptionBits {
+    SHADOW_ENABLE_BIT = 1 << 0,
+    SHADOW_CASCADE_ENABLE_BIT = 1 << 1,
+    FOG_ENABLE_BIT = 1 << 2,
+    ENVIRONMENT_ENABLE_BIT = 1 << 3,
+    REFRACTION_ENABLE_BIT = 1 << 4
+  };
+  using RendererOptionFlags = uint32_t;
 
-	void set_mesh_renderer_options(RendererOptionFlags flags);
-	void set_mesh_renderer_options_from_lighting(const LightingParameters &params);
+  void set_mesh_renderer_options(RendererOptionFlags flags);
+  void set_mesh_renderer_options_from_lighting(
+      const LightingParameters& params);
 
-	void begin();
+  void begin();
 
-	void push_renderables(RenderContext &context, const VisibilityList &visible);
+  void push_renderables(RenderContext& context, const VisibilityList& visible);
 
-	void flush(Vulkan::CommandBuffer &cmd, RenderContext &context);
+  void flush(Vulkan::CommandBuffer& cmd, RenderContext& context);
 
-	void render_debug_aabb(RenderContext &context, const AABB &aabb, const vec4 &color);
+  void render_debug_aabb(RenderContext& context,
+                         const AABB& aabb,
+                         const vec4& color);
 
-	void render_debug_frustum(RenderContext &context, const Frustum &frustum, const vec4 &color);
+  void render_debug_frustum(RenderContext& context,
+                            const Frustum& frustum,
+                            const vec4& color);
 
-	RenderQueue &get_render_queue()
-	{
-		return queue;
-	}
+  RenderQueue& get_render_queue() { return queue; }
 
-	RendererType get_renderer_type() const
-	{
-		return type;
-	}
+  RendererType get_renderer_type() const { return type; }
 
-private:
-	void on_device_created(const Vulkan::DeviceCreatedEvent &e);
+ private:
+  void on_device_created(const Vulkan::DeviceCreatedEvent& e);
 
-	void on_device_destroyed(const Vulkan::DeviceCreatedEvent &e);
+  void on_device_destroyed(const Vulkan::DeviceCreatedEvent& e);
 
-	Vulkan::Device *device = nullptr;
-	RenderQueue queue;
-	ShaderSuite suite[Util::ecast(RenderableType::Count)];
+  Vulkan::Device* device = nullptr;
+  RenderQueue queue;
+  ShaderSuite suite[Util::ecast(RenderableType::Count)];
 
-	DebugMeshInstanceInfo &render_debug(RenderContext &context, unsigned count);
+  DebugMeshInstanceInfo& render_debug(RenderContext& context, unsigned count);
 
-	RendererType type;
-	uint32_t renderer_options = ~0u;
+  RendererType type;
+  uint32_t renderer_options = ~0u;
 
-	void set_lighting_parameters(Vulkan::CommandBuffer &cmd, const RenderContext &context);
-	void set_mesh_renderer_options_internal(RendererOptionFlags flags);
+  void set_lighting_parameters(Vulkan::CommandBuffer& cmd,
+                               const RenderContext& context);
+  void set_mesh_renderer_options_internal(RendererOptionFlags flags);
 };
 
-class DeferredLightRenderer
-{
-public:
-	static void render_light(Vulkan::CommandBuffer &cmd, RenderContext &context);
+class DeferredLightRenderer {
+ public:
+  static void render_light(Vulkan::CommandBuffer& cmd, RenderContext& context);
 };
-}
+}  // namespace Granite

@@ -22,56 +22,57 @@
 
 #pragma once
 
-#include "volatile_source.hpp"
 #include "image.hpp"
+#include "volatile_source.hpp"
 
-namespace Vulkan
-{
-class Texture : public Util::VolatileSource<Texture>
-{
-public:
-	friend class Util::VolatileSource<Texture>;
+namespace Vulkan {
+class Texture : public Util::VolatileSource<Texture> {
+ public:
+  friend class Util::VolatileSource<Texture>;
 
-	Texture(Device *device, const std::string &path, VkFormat format = VK_FORMAT_UNDEFINED);
-	Texture(Device *device);
-	void set_path(const std::string &path);
+  Texture(Device* device,
+          const std::string& path,
+          VkFormat format = VK_FORMAT_UNDEFINED);
+  Texture(Device* device);
+  void set_path(const std::string& path);
 
-	ImageHandle get_image()
-	{
-		VK_ASSERT(handle);
-		return handle;
-	}
+  ImageHandle get_image() {
+    VK_ASSERT(handle);
+    return handle;
+  }
 
-	void replace_image(ImageHandle handle);
+  void replace_image(ImageHandle handle);
 
-private:
-	Device *device;
-	ImageHandle handle;
-	VkFormat format;
-	void update_stb(const void *data, size_t size);
-	void update_hdr(const void *data, size_t size);
-	void update_gli(const void *data, size_t size);
+ private:
+  Device* device;
+  ImageHandle handle;
+  VkFormat format;
+  void update_stb(const void* data, size_t size);
+  void update_hdr(const void* data, size_t size);
+  void update_gli(const void* data, size_t size);
 
-	void load();
-	void unload();
-	void update(const void *data, size_t size);
+  void load();
+  void unload();
+  void update(const void* data, size_t size);
 };
 
-class TextureManager
-{
-public:
-	TextureManager(Device *device);
-	Texture *request_texture(const std::string &path, VkFormat format = VK_FORMAT_UNDEFINED);
-	Texture *register_deferred_texture(const std::string &path);
+class TextureManager {
+ public:
+  TextureManager(Device* device);
+  Texture* request_texture(const std::string& path,
+                           VkFormat format = VK_FORMAT_UNDEFINED);
+  Texture* register_deferred_texture(const std::string& path);
 
-	void register_texture_update_notification(const std::string &modified_path,
-	                                          std::function<void (Texture &)> func);
+  void register_texture_update_notification(const std::string& modified_path,
+                                            std::function<void(Texture&)> func);
 
-	void notify_updated_texture(const std::string &path, Vulkan::Texture &texture);
+  void notify_updated_texture(const std::string& path,
+                              Vulkan::Texture& texture);
 
-private:
-	Device *device;
-	std::unordered_map<std::string, std::unique_ptr<Texture>> textures;
-	std::unordered_map<std::string, std::vector<std::function<void (Texture &)>>> notifications;
+ private:
+  Device* device;
+  std::unordered_map<std::string, std::unique_ptr<Texture>> textures;
+  std::unordered_map<std::string, std::vector<std::function<void(Texture&)>>>
+      notifications;
 };
-}
+}  // namespace Vulkan

@@ -22,36 +22,45 @@
 
 #pragma once
 
-#include "scene.hpp"
-#include "importers.hpp"
 #include <vector>
+#include "importers.hpp"
+#include "scene.hpp"
 
-namespace Granite
-{
-class AnimationSystem
-{
-public:
-	void animate(double t);
+namespace Granite {
+class AnimationSystem {
+ public:
+  void animate(double t);
 
-	void start_animation(Scene::NodeHandle *node_list, const std::string &name, double start_time, bool repeat);
-	void start_animation(Scene::Node &node, const std::string &name, double start_time, bool repeat);
-	void register_animation(const std::string &name, const Importer::Animation &animation);
+  void start_animation(Scene::NodeHandle* node_list,
+                       const std::string& name,
+                       double start_time,
+                       bool repeat);
+  void start_animation(Scene::Node& node,
+                       const std::string& name,
+                       double start_time,
+                       bool repeat);
+  void register_animation(const std::string& name,
+                          const Importer::Animation& animation);
 
-private:
-	std::unordered_map<std::string, Importer::Animation> animation_map;
+ private:
+  std::unordered_map<std::string, Importer::Animation> animation_map;
 
-	struct AnimationState
-	{
-		AnimationState(std::vector<std::pair<Transform *, Scene::Node *>> channel_targets, const Importer::Animation &anim, double start_time, bool repeating)
-			: channel_targets(std::move(channel_targets)), animation(anim), start_time(start_time), repeating(repeating)
-		{
-		}
-		std::vector<std::pair<Transform *, Scene::Node *>> channel_targets;
-		const Importer::Animation &animation;
-		double start_time = 0.0;
-		bool repeating = false;
-	};
+  struct AnimationState {
+    AnimationState(
+        std::vector<std::pair<Transform*, Scene::Node*>> channel_targets,
+        const Importer::Animation& anim,
+        double start_time,
+        bool repeating)
+        : channel_targets(std::move(channel_targets)),
+          animation(anim),
+          start_time(start_time),
+          repeating(repeating) {}
+    std::vector<std::pair<Transform*, Scene::Node*>> channel_targets;
+    const Importer::Animation& animation;
+    double start_time = 0.0;
+    bool repeating = false;
+  };
 
-	std::vector<std::unique_ptr<AnimationState>> animations;
+  std::vector<std::unique_ptr<AnimationState>> animations;
 };
-}
+}  // namespace Granite

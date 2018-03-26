@@ -22,41 +22,35 @@
 
 #pragma once
 
-#include "scene.hpp"
-#include "gltf.hpp"
-#include "animation_system.hpp"
 #include <memory>
 #include <string>
+#include "animation_system.hpp"
+#include "gltf.hpp"
+#include "scene.hpp"
 
-namespace Granite
-{
-class SceneLoader
-{
-public:
-	SceneLoader();
-	void load_scene(const std::string &path);
+namespace Granite {
+class SceneLoader {
+ public:
+  SceneLoader();
+  void load_scene(const std::string& path);
 
-	Scene &get_scene()
-	{
-		return *scene;
-	}
+  Scene& get_scene() { return *scene; }
 
-	std::unique_ptr<AnimationSystem> consume_animation_system();
+  std::unique_ptr<AnimationSystem> consume_animation_system();
 
-private:
-	struct SubsceneData
-	{
-		std::unique_ptr<GLTF::Parser> parser;
-		std::vector<AbstractRenderableHandle> meshes;
-	};
-	std::unordered_map<std::string, SubsceneData> subscenes;
+ private:
+  struct SubsceneData {
+    std::unique_ptr<GLTF::Parser> parser;
+    std::vector<AbstractRenderableHandle> meshes;
+  };
+  std::unordered_map<std::string, SubsceneData> subscenes;
 
-	std::unique_ptr<Scene> scene;
-	std::unique_ptr<AnimationSystem> animation_system;
-	void parse_scene_format(const std::string &path, const std::string &json);
-	void parse_gltf(const std::string &path);
+  std::unique_ptr<Scene> scene;
+  std::unique_ptr<AnimationSystem> animation_system;
+  void parse_scene_format(const std::string& path, const std::string& json);
+  void parse_gltf(const std::string& path);
 
-	Scene::NodeHandle build_tree_for_subscene(const SubsceneData &subscene);
-	void load_animation(const std::string &path, Importer::Animation &animation);
+  Scene::NodeHandle build_tree_for_subscene(const SubsceneData& subscene);
+  void load_animation(const std::string& path, Importer::Animation& animation);
 };
-}
+}  // namespace Granite
