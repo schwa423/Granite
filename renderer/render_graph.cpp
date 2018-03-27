@@ -342,47 +342,44 @@ void RenderGraph::validate_passes() {
   }
 }
 
-void RenderGraph::build_physical_resources() {
-  unsigned phys_index = 0;
+void RenderGraph::build_physical_resource(RenderResource* resource) {
+  if (resource && resource->get_physical_index() == RenderResource::Unused) {
+    resource->set_physical_index(physical_dimensions_.size());
+    physical_dimensions_.push_back(get_resource_dimensions(*resource));
+  } else if (resource) {
+    physical_dimensions_[resource->get_physical_index()].stages |=
+        resource->get_used_stages();
+  }
+}
 
+void RenderGraph::match_physical_input_to_output(RenderResource* input,
+                                                 RenderResource* output) {
+  if (output->get_physical_index() == RenderResource::Unused) {
+    output->set_physical_index(input->get_physical_index());
+  } else if (output->get_physical_index() != input->get_physical_index()) {
+    throw logic_error("Cannot alias resources. Index already claimed.");
+  }
+}
+
+void RenderGraph::build_physical_resources() {
   // Find resources which can alias safely.
   for (auto& pass_index : pass_stack_) {
     auto& pass = *passes_[pass_index];
 
     for (auto* input : pass.get_texture_inputs()) {
-      if (input->get_physical_index() == RenderResource::Unused) {
-        physical_dimensions_.push_back(get_resource_dimensions(*input));
-        input->set_physical_index(phys_index++);
-      } else
-        physical_dimensions_[input->get_physical_index()].stages |=
-            input->get_used_stages();
+      build_physical_resource(input);
     }
 
     for (auto* input : pass.get_uniform_inputs()) {
-      if (input->get_physical_index() == RenderResource::Unused) {
-        physical_dimensions_.push_back(get_resource_dimensions(*input));
-        input->set_physical_index(phys_index++);
-      } else
-        physical_dimensions_[input->get_physical_index()].stages |=
-            input->get_used_stages();
+      build_physical_resource(input);
     }
 
     for (auto* input : pass.get_storage_read_inputs()) {
-      if (input->get_physical_index() == RenderResource::Unused) {
-        physical_dimensions_.push_back(get_resource_dimensions(*input));
-        input->set_physical_index(phys_index++);
-      } else
-        physical_dimensions_[input->get_physical_index()].stages |=
-            input->get_used_stages();
+      build_physical_resource(input);
     }
 
     for (auto* input : pass.get_color_scale_inputs()) {
-      if (input && input->get_physical_index() == RenderResource::Unused) {
-        physical_dimensions_.push_back(get_resource_dimensions(*input));
-        input->set_physical_index(phys_index++);
-      } else if (input)
-        physical_dimensions_[input->get_physical_index()].stages |=
-            input->get_used_stages();
+      build_physical_resource(input);
     }
 
     if (!pass.get_color_inputs().empty()) {
@@ -390,20 +387,8 @@ void RenderGraph::build_physical_resources() {
       for (unsigned i = 0; i < size; i++) {
         auto* input = pass.get_color_inputs()[i];
         if (input) {
-          if (input->get_physical_index() == RenderResource::Unused) {
-            physical_dimensions_.push_back(get_resource_dimensions(*input));
-            input->set_physical_index(phys_index++);
-          } else
-            physical_dimensions_[input->get_physical_index()].stages |=
-                input->get_used_stages();
-
-          if (pass.get_color_outputs()[i]->get_physical_index() ==
-              RenderResource::Unused)
-            pass.get_color_outputs()[i]->set_physical_index(
-                input->get_physical_index());
-          else if (pass.get_color_outputs()[i]->get_physical_index() !=
-                   input->get_physical_index())
-            throw logic_error("Cannot alias resources. Index already claimed.");
+          build_physical_resource(input);
+          match_physical_input_to_output(input, pass.get_color_outputs()[i]);
         }
       }
     }
@@ -413,20 +398,8 @@ void RenderGraph::build_physical_resources() {
       for (unsigned i = 0; i < size; i++) {
         auto* input = pass.get_storage_inputs()[i];
         if (input) {
-          if (input->get_physical_index() == RenderResource::Unused) {
-            physical_dimensions_.push_back(get_resource_dimensions(*input));
-            input->set_physical_index(phys_index++);
-          } else
-            physical_dimensions_[input->get_physical_index()].stages |=
-                input->get_used_stages();
-
-          if (pass.get_storage_outputs()[i]->get_physical_index() ==
-              RenderResource::Unused)
-            pass.get_storage_outputs()[i]->set_physical_index(
-                input->get_physical_index());
-          else if (pass.get_storage_outputs()[i]->get_physical_index() !=
-                   input->get_physical_index())
-            throw logic_error("Cannot alias resources. Index already claimed.");
+          build_physical_resource(input);
+          match_physical_input_to_output(input, pass.get_storage_outputs()[i]);
         }
       }
     }
@@ -436,98 +409,55 @@ void RenderGraph::build_physical_resources() {
       for (unsigned i = 0; i < size; i++) {
         auto* input = pass.get_storage_texture_inputs()[i];
         if (input) {
-          if (input->get_physical_index() == RenderResource::Unused) {
-            physical_dimensions_.push_back(get_resource_dimensions(*input));
-            input->set_physical_index(phys_index++);
-          } else
-            physical_dimensions_[input->get_physical_index()].stages |=
-                input->get_used_stages();
-
-          if (pass.get_storage_texture_outputs()[i]->get_physical_index() ==
-              RenderResource::Unused)
-            pass.get_storage_texture_outputs()[i]->set_physical_index(
-                input->get_physical_index());
-          else if (pass.get_storage_texture_outputs()[i]
-                       ->get_physical_index() != input->get_physical_index())
-            throw logic_error("Cannot alias resources. Index already claimed.");
+          build_physical_resource(input);
+          match_physical_input_to_output(input,
+                                         pass.get_storage_texture_outputs()[i]);
         }
       }
     }
 
     for (auto* output : pass.get_color_outputs()) {
-      if (output->get_physical_index() == RenderResource::Unused) {
-        physical_dimensions_.push_back(get_resource_dimensions(*output));
-        output->set_physical_index(phys_index++);
-      } else
-        physical_dimensions_[output->get_physical_index()].stages |=
-            output->get_used_stages();
+      build_physical_resource(output);
     }
 
     for (auto* output : pass.get_resolve_outputs()) {
-      if (output->get_physical_index() == RenderResource::Unused) {
-        physical_dimensions_.push_back(get_resource_dimensions(*output));
-        output->set_physical_index(phys_index++);
-      } else
-        physical_dimensions_[output->get_physical_index()].stages |=
-            output->get_used_stages();
+      build_physical_resource(output);
     }
 
     for (auto* output : pass.get_storage_outputs()) {
-      if (output->get_physical_index() == RenderResource::Unused) {
-        physical_dimensions_.push_back(get_resource_dimensions(*output));
-        output->set_physical_index(phys_index++);
-      } else
-        physical_dimensions_[output->get_physical_index()].stages |=
-            output->get_used_stages();
+      build_physical_resource(output);
     }
 
     for (auto* output : pass.get_storage_texture_outputs()) {
-      if (output->get_physical_index() == RenderResource::Unused) {
-        physical_dimensions_.push_back(get_resource_dimensions(*output));
-        output->set_physical_index(phys_index++);
-      } else
-        physical_dimensions_[output->get_physical_index()].stages |=
-            output->get_used_stages();
+      build_physical_resource(output);
     }
 
     auto* ds_output = pass.get_depth_stencil_output();
     auto* ds_input = pass.get_depth_stencil_input();
     if (ds_input) {
-      if (ds_input->get_physical_index() == RenderResource::Unused) {
-        physical_dimensions_.push_back(get_resource_dimensions(*ds_input));
-        ds_input->set_physical_index(phys_index++);
-      } else
-        physical_dimensions_[ds_input->get_physical_index()].stages |=
-            ds_input->get_used_stages();
+      build_physical_resource(ds_input);
 
       if (ds_output) {
-        if (ds_output->get_physical_index() == RenderResource::Unused)
+        if (ds_output->get_physical_index() == RenderResource::Unused) {
           ds_output->set_physical_index(ds_input->get_physical_index());
-        else if (ds_output->get_physical_index() !=
-                 ds_input->get_physical_index())
+        } else if (ds_output->get_physical_index() !=
+                   ds_input->get_physical_index()) {
           throw logic_error("Cannot alias resources. Index already claimed.");
-        else
+        } else {
+          // JJOSH: not sure I understand the logic here.  Why is this different
+          // from the other match_physical_input_to_output() cases.
           physical_dimensions_[ds_output->get_physical_index()].stages |=
               ds_output->get_used_stages();
+        }
       }
     } else if (ds_output) {
-      if (ds_output->get_physical_index() == RenderResource::Unused) {
-        physical_dimensions_.push_back(get_resource_dimensions(*ds_output));
-        ds_output->set_physical_index(phys_index++);
-      } else
-        physical_dimensions_[ds_output->get_physical_index()].stages |=
-            ds_output->get_used_stages();
+      build_physical_resource(ds_output);
     }
 
     // Assign input attachments last so they can alias properly with existing
     // color/depth attachments in the same subpass.
     for (auto* input : pass.get_attachment_inputs()) {
-      if (input->get_physical_index() == RenderResource::Unused) {
-        physical_dimensions_.push_back(get_resource_dimensions(*input));
-        input->set_physical_index(phys_index++);
-      } else
-        physical_dimensions_[input->get_physical_index()].stages |=
-            input->get_used_stages();
+      build_physical_resource(input);
     }
   }
 
@@ -2169,12 +2099,28 @@ void RenderGraph::bake() {
 }
 
 ResourceDimensions RenderGraph::get_resource_dimensions(
+    const RenderResource& resource) const {
+  switch (resource.get_type()) {
+    case RenderResource::Type::Buffer:
+      return get_resource_dimensions(
+          static_cast<const RenderBufferResource&>(resource));
+    case RenderResource::Type::Texture:
+      return get_resource_dimensions(
+          static_cast<const RenderTextureResource&>(resource));
+    default:
+      throw logic_error("Unknown resource type.");
+      return ResourceDimensions();
+  }
+}
+
+ResourceDimensions RenderGraph::get_resource_dimensions(
     const RenderBufferResource& resource) const {
   ResourceDimensions dim;
   auto& info = resource.get_buffer_info();
   dim.buffer_info = info;
   dim.persistent = info.persistent;
   dim.name = resource.get_name();
+  // JJOSH: no used stages?
   return dim;
 }
 

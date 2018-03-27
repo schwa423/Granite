@@ -456,6 +456,8 @@ class RenderGraph : public Vulkan::NoCopyNoMove, public EventHandler {
   void build_barriers();
 
   ResourceDimensions get_resource_dimensions(
+      const RenderResource& resource) const;
+  ResourceDimensions get_resource_dimensions(
       const RenderBufferResource& resource) const;
   ResourceDimensions get_resource_dimensions(
       const RenderTextureResource& resource) const;
@@ -510,6 +512,10 @@ class RenderGraph : public Vulkan::NoCopyNoMove, public EventHandler {
   void build_physical_barriers();
   void build_render_pass_info();
   void build_aliases();
+
+  void build_physical_resource(RenderResource* resource);
+  void match_physical_input_to_output(RenderResource* input,
+                                      RenderResource* output);
 
   std::vector<ResourceDimensions> physical_dimensions_;
   std::vector<Vulkan::ImageView*> physical_attachments_;
