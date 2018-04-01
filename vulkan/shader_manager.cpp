@@ -151,9 +151,10 @@ unsigned ShaderProgram::register_variant(
 
   auto hash = h.get();
   auto itr = find(begin(variant_hashes), end(variant_hashes), hash);
-  if (itr != end(variant_hashes))
+  if (itr != end(variant_hashes)) {
+    // JJOSH: TODO: DCHECK that defines match.
     return unsigned(itr - begin(variant_hashes));
-
+  }
   unsigned index = unsigned(variants.size());
   variants.emplace_back();
   auto& var = variants.back();

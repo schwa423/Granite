@@ -60,7 +60,7 @@ class Device {
 
   unsigned get_num_swapchain_images() const { return per_frame.size(); }
 
-  void begin_frame(unsigned index);
+  void dev_begin_frame(unsigned index);
   void flush_frame();
   void flush_frame(CommandBuffer::Type type);
   void wait_idle();

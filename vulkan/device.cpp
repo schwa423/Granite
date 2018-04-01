@@ -1116,7 +1116,7 @@ void Device::wait_idle() {
   }
 }
 
-void Device::begin_frame(unsigned index) {
+void Device::dev_begin_frame(unsigned index) {
   // Flush the frame here as we might have pending staging command buffers from
   // init stage.
   flush_frame();
