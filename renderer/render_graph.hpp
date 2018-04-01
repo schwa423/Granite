@@ -513,6 +513,8 @@ class RenderGraph : public Vulkan::NoCopyNoMove, public EventHandler {
   void build_render_pass_info();
   void build_aliases();
 
+  // JJOSH: add these two methods to make build_physical_passes() easier to
+  // read.
   void build_physical_resource(RenderResource* resource);
   void match_physical_input_to_output(RenderResource* input,
                                       RenderResource* output);

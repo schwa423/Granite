@@ -188,11 +188,11 @@ class CommandBuffer : public Util::IntrusivePtrEnabled<CommandBuffer> {
                 VkCommandBuffer cmd,
                 VkPipelineCache cache,
                 Type type);
-  VkCommandBuffer get_command_buffer() { return cmd; }
+  VkCommandBuffer get_command_buffer() { return cmd_; }
 
-  Device& get_device() { return *device; }
+  Device& get_device() { return *device_; }
 
-  bool swapchain_touched() const { return uses_swapchain; }
+  bool swapchain_touched() const { return uses_swapchain_; }
 
   void clear_image(const Image& image, const VkClearValue& value);
   void clear_quad(unsigned attachment,
@@ -402,16 +402,16 @@ class CommandBuffer : public Util::IntrusivePtrEnabled<CommandBuffer> {
 
 #define SET_STATIC_STATE(value)                         \
   do {                                                  \
-    if (static_state.state.value != value) {            \
-      static_state.state.value = value;                 \
+    if (static_state_.state.value != value) {           \
+      static_state_.state.value = value;                \
       set_dirty(COMMAND_BUFFER_DIRTY_STATIC_STATE_BIT); \
     }                                                   \
   } while (0)
 
 #define SET_POTENTIALLY_STATIC_STATE(value)             \
   do {                                                  \
-    if (potential_static_state.value != value) {        \
-      potential_static_state.value = value;             \
+    if (potential_static_state_.value != value) {       \
+      potential_static_state_.value = value;            \
       set_dirty(COMMAND_BUFFER_DIRTY_STATIC_STATE_BIT); \
     }                                                   \
   } while (0)
@@ -524,12 +524,12 @@ class CommandBuffer : public Util::IntrusivePtrEnabled<CommandBuffer> {
     SET_POTENTIALLY_STATIC_STATE(blend_constants[3]);
   }
 
-#define SET_DYNAMIC_STATE(state, flags) \
-  do {                                  \
-    if (dynamic_state.state != state) { \
-      dynamic_state.state = state;      \
-      set_dirty(flags);                 \
-    }                                   \
+#define SET_DYNAMIC_STATE(state, flags)  \
+  do {                                   \
+    if (dynamic_state_.state != state) { \
+      dynamic_state_.state = state;      \
+      set_dirty(flags);                  \
+    }                                    \
   } while (0)
 
   inline void set_depth_bias(float depth_bias_constant,
@@ -567,51 +567,51 @@ class CommandBuffer : public Util::IntrusivePtrEnabled<CommandBuffer> {
     set_stencil_back_reference(compare_mask, write_mask, reference);
   }
 
-  inline Type get_command_buffer_type() const { return type; }
+  inline Type get_command_buffer_type() const { return type_; }
 
  private:
-  Device* device;
-  VkCommandBuffer cmd;
-  VkPipelineCache cache;
-  Type type;
+  Device* device_;
+  VkCommandBuffer cmd_;
+  VkPipelineCache cache_;
+  Type type_;
 
-  const Framebuffer* framebuffer = nullptr;
-  const RenderPass* render_pass = nullptr;
+  const Framebuffer* framebuffer_ = nullptr;
+  const RenderPass* render_pass_ = nullptr;
 
-  VertexAttribState attribs[VULKAN_NUM_VERTEX_ATTRIBS] = {};
-  IndexState index = {};
-  VertexBindingState vbo = {};
-  ResourceBindings bindings;
+  VertexAttribState attribs_[VULKAN_NUM_VERTEX_ATTRIBS] = {};
+  IndexState index_ = {};
+  VertexBindingState vbo_ = {};
+  ResourceBindings bindings_;
 
-  VkPipeline current_pipeline = VK_NULL_HANDLE;
-  VkPipelineLayout current_pipeline_layout = VK_NULL_HANDLE;
-  PipelineLayout* current_layout = nullptr;
-  Program* current_program = nullptr;
-  unsigned current_subpass = 0;
+  VkPipeline current_pipeline_ = VK_NULL_HANDLE;
+  VkPipelineLayout current_pipeline_layout_ = VK_NULL_HANDLE;
+  PipelineLayout* current_layout_ = nullptr;
+  Program* current_program_ = nullptr;
+  unsigned current_subpass_ = 0;
 
-  VkViewport viewport = {};
-  VkRect2D scissor = {};
+  VkViewport viewport_ = {};
+  VkRect2D scissor_ = {};
 
-  CommandBufferDirtyFlags dirty = ~0u;
-  uint32_t dirty_sets = 0;
-  uint32_t dirty_vbos = 0;
-  uint32_t active_vbos = 0;
-  bool uses_swapchain = false;
-  bool is_compute = true;
+  CommandBufferDirtyFlags dirty_ = ~0u;
+  uint32_t dirty_sets_ = 0;
+  uint32_t dirty_vbos_ = 0;
+  uint32_t active_vbos_ = 0;
+  bool uses_swapchain_ = false;
+  bool is_compute_ = true;
 
-  void set_dirty(CommandBufferDirtyFlags flags) { dirty |= flags; }
+  void set_dirty(CommandBufferDirtyFlags flags) { dirty_ |= flags; }
 
   CommandBufferDirtyFlags get_and_clear(CommandBufferDirtyFlags flags) {
-    auto mask = dirty & flags;
-    dirty &= ~flags;
+    auto mask = dirty_ & flags;
+    dirty_ &= ~flags;
     return mask;
   }
 
-  PipelineState static_state;
-  PotentialState potential_static_state = {};
-  DynamicState dynamic_state = {};
+  PipelineState static_state_;
+  PotentialState potential_static_state_ = {};
+  DynamicState dynamic_state_ = {};
 #ifndef _MSC_VER
-  static_assert(sizeof(static_state.words) >= sizeof(static_state.state),
+  static_assert(sizeof(static_state_.words) >= sizeof(static_state_.state),
                 "Hashable pipeline state is not large enough!");
 #endif
 

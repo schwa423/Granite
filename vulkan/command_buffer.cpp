@@ -33,11 +33,11 @@ CommandBuffer::CommandBuffer(Device* device,
                              VkCommandBuffer cmd,
                              VkPipelineCache cache,
                              Type type)
-    : device(device), cmd(cmd), cache(cache), type(type) {
+    : device_(device), cmd_(cmd), cache_(cache), type_(type) {
   begin_compute();
   set_opaque_state();
-  memset(&static_state, 0, sizeof(static_state));
-  memset(&bindings, 0, sizeof(bindings));
+  memset(&static_state_, 0, sizeof(static_state_));
+  memset(&bindings_, 0, sizeof(bindings_));
 }
 
 void CommandBuffer::copy_buffer(const Buffer& dst,
@@ -46,11 +46,9 @@ void CommandBuffer::copy_buffer(const Buffer& dst,
                                 VkDeviceSize src_offset,
                                 VkDeviceSize size) {
   const VkBufferCopy region = {
-      src_offset,
-      dst_offset,
-      size,
+      src_offset, dst_offset, size,
   };
-  vkCmdCopyBuffer(cmd, src.get_buffer(), dst.get_buffer(), 1, &region);
+  vkCmdCopyBuffer(cmd_, src.get_buffer(), dst.get_buffer(), 1, &region);
 }
 
 void CommandBuffer::copy_buffer(const Buffer& dst, const Buffer& src) {
@@ -70,7 +68,7 @@ void CommandBuffer::copy_buffer_to_image(
   const VkBufferImageCopy region = {
       buffer_offset, row_length, slice_height, subresource, offset, extent,
   };
-  vkCmdCopyBufferToImage(cmd, src.get_buffer(), image.get_image(),
+  vkCmdCopyBufferToImage(cmd_, src.get_buffer(), image.get_image(),
                          image.get_layout(), 1, &region);
 }
 
@@ -86,13 +84,13 @@ void CommandBuffer::copy_image_to_buffer(
   const VkBufferImageCopy region = {
       buffer_offset, row_length, slice_height, subresource, offset, extent,
   };
-  vkCmdCopyImageToBuffer(cmd, image.get_image(), image.get_layout(),
+  vkCmdCopyImageToBuffer(cmd_, image.get_image(), image.get_layout(),
                          buffer.get_buffer(), 1, &region);
 }
 
 void CommandBuffer::clear_image(const Image& image, const VkClearValue& value) {
-  VK_ASSERT(!framebuffer);
-  VK_ASSERT(!render_pass);
+  VK_ASSERT(!framebuffer_);
+  VK_ASSERT(!render_pass_);
 
   auto aspect = format_to_aspect_mask(image.get_format());
   VkImageSubresourceRange range = {};
@@ -102,10 +100,10 @@ void CommandBuffer::clear_image(const Image& image, const VkClearValue& value) {
   range.levelCount = image.get_create_info().levels;
   range.layerCount = image.get_create_info().layers;
   if (aspect & VK_IMAGE_ASPECT_COLOR_BIT)
-    vkCmdClearColorImage(cmd, image.get_image(), image.get_layout(),
+    vkCmdClearColorImage(cmd_, image.get_image(), image.get_layout(),
                          &value.color, 1, &range);
   else
-    vkCmdClearDepthStencilImage(cmd, image.get_image(), image.get_layout(),
+    vkCmdClearDepthStencilImage(cmd_, image.get_image(), image.get_layout(),
                                 &value.depthStencil, 1, &range);
 }
 
@@ -113,18 +111,18 @@ void CommandBuffer::clear_quad(unsigned attachment,
                                const VkClearRect& rect,
                                const VkClearValue& value,
                                VkImageAspectFlags aspect) {
-  VK_ASSERT(framebuffer);
-  VK_ASSERT(render_pass);
+  VK_ASSERT(framebuffer_);
+  VK_ASSERT(render_pass_);
   VkClearAttachment att = {};
   att.clearValue = value;
   att.colorAttachment = attachment;
   att.aspectMask = aspect;
-  vkCmdClearAttachments(cmd, 1, &att, 1, &rect);
+  vkCmdClearAttachments(cmd_, 1, &att, 1, &rect);
 }
 
 void CommandBuffer::full_barrier() {
-  VK_ASSERT(!render_pass);
-  VK_ASSERT(!framebuffer);
+  VK_ASSERT(!render_pass_);
+  VK_ASSERT(!framebuffer_);
   barrier(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
           VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT |
               VK_ACCESS_SHADER_WRITE_BIT |
@@ -140,12 +138,12 @@ void CommandBuffer::full_barrier() {
 }
 
 void CommandBuffer::pixel_barrier() {
-  VK_ASSERT(render_pass);
-  VK_ASSERT(framebuffer);
+  VK_ASSERT(render_pass_);
+  VK_ASSERT(framebuffer_);
   VkMemoryBarrier barrier = {VK_STRUCTURE_TYPE_MEMORY_BARRIER};
   barrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
   barrier.dstAccessMask = VK_ACCESS_INPUT_ATTACHMENT_READ_BIT;
-  vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+  vkCmdPipelineBarrier(cmd_, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
                        VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
                        VK_DEPENDENCY_BY_REGION_BIT, 1, &barrier, 0, nullptr, 0,
                        nullptr);
@@ -155,12 +153,12 @@ void CommandBuffer::barrier(VkPipelineStageFlags src_stages,
                             VkAccessFlags src_access,
                             VkPipelineStageFlags dst_stages,
                             VkAccessFlags dst_access) {
-  VK_ASSERT(!render_pass);
-  VK_ASSERT(!framebuffer);
+  VK_ASSERT(!render_pass_);
+  VK_ASSERT(!framebuffer_);
   VkMemoryBarrier barrier = {VK_STRUCTURE_TYPE_MEMORY_BARRIER};
   barrier.srcAccessMask = src_access;
   barrier.dstAccessMask = dst_access;
-  vkCmdPipelineBarrier(cmd, src_stages, dst_stages, 0, 1, &barrier, 0, nullptr,
+  vkCmdPipelineBarrier(cmd_, src_stages, dst_stages, 0, 1, &barrier, 0, nullptr,
                        0, nullptr);
 }
 
@@ -172,9 +170,9 @@ void CommandBuffer::barrier(VkPipelineStageFlags src_stages,
                             const VkBufferMemoryBarrier* buffers,
                             unsigned image_barriers,
                             const VkImageMemoryBarrier* images) {
-  VK_ASSERT(!render_pass);
-  VK_ASSERT(!framebuffer);
-  vkCmdPipelineBarrier(cmd, src_stages, dst_stages, 0, barriers, globals,
+  VK_ASSERT(!render_pass_);
+  VK_ASSERT(!framebuffer_);
+  vkCmdPipelineBarrier(cmd_, src_stages, dst_stages, 0, barriers, globals,
                        buffer_barriers, buffers, image_barriers, images);
 }
 
@@ -183,8 +181,8 @@ void CommandBuffer::buffer_barrier(const Buffer& buffer,
                                    VkAccessFlags src_access,
                                    VkPipelineStageFlags dst_stages,
                                    VkAccessFlags dst_access) {
-  VK_ASSERT(!render_pass);
-  VK_ASSERT(!framebuffer);
+  VK_ASSERT(!render_pass_);
+  VK_ASSERT(!framebuffer_);
   VkBufferMemoryBarrier barrier = {VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER};
   barrier.srcAccessMask = src_access;
   barrier.dstAccessMask = dst_access;
@@ -192,7 +190,7 @@ void CommandBuffer::buffer_barrier(const Buffer& buffer,
   barrier.offset = 0;
   barrier.size = buffer.get_create_info().size;
 
-  vkCmdPipelineBarrier(cmd, src_stages, dst_stages, 0, 0, nullptr, 1, &barrier,
+  vkCmdPipelineBarrier(cmd_, src_stages, dst_stages, 0, 0, nullptr, 1, &barrier,
                        0, nullptr);
 }
 
@@ -203,8 +201,8 @@ void CommandBuffer::image_barrier(const Image& image,
                                   VkAccessFlags src_access,
                                   VkPipelineStageFlags dst_stages,
                                   VkAccessFlags dst_access) {
-  VK_ASSERT(!render_pass);
-  VK_ASSERT(!framebuffer);
+  VK_ASSERT(!render_pass_);
+  VK_ASSERT(!framebuffer_);
   VK_ASSERT(image.get_create_info().domain == ImageDomain::Physical);
 
   VkImageMemoryBarrier barrier = {VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER};
@@ -220,7 +218,7 @@ void CommandBuffer::image_barrier(const Image& image,
   barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
   barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 
-  vkCmdPipelineBarrier(cmd, src_stages, dst_stages, 0, 0, nullptr, 0, nullptr,
+  vkCmdPipelineBarrier(cmd_, src_stages, dst_stages, 0, 0, nullptr, 0, nullptr,
                        1, &barrier);
 }
 
@@ -338,7 +336,7 @@ void CommandBuffer::blit_image(const Image& dst,
 		{ dst_offset, add_offset(dst_offset, dst_extent) },
 	};
 
-	vkCmdBlitImage(cmd, src.get_image(), src_layout, dst.get_image(), dst_layout, 1, &blit, filter);
+	vkCmdBlitImage(cmd_, src.get_image(), src_layout, dst.get_image(), dst_layout, 1, &blit, filter);
 #else
   // RADV workaround.
   for (unsigned i = 0; i < num_layers; i++) {
@@ -351,59 +349,59 @@ void CommandBuffer::blit_image(const Image& dst,
         {dst_offset, add_offset(dst_offset, dst_extent)},
     };
 
-    vkCmdBlitImage(cmd, src.get_image(), src_layout, dst.get_image(),
+    vkCmdBlitImage(cmd_, src.get_image(), src_layout, dst.get_image(),
                    dst_layout, 1, &blit, filter);
   }
 #endif
 }
 
 void CommandBuffer::begin_context() {
-  dirty = ~0u;
-  dirty_sets = ~0u;
-  dirty_vbos = ~0u;
-  current_pipeline = VK_NULL_HANDLE;
-  current_pipeline_layout = VK_NULL_HANDLE;
-  current_layout = nullptr;
-  current_program = nullptr;
-  memset(bindings.cookies, 0, sizeof(bindings.cookies));
-  memset(bindings.secondary_cookies, 0, sizeof(bindings.secondary_cookies));
-  memset(&index, 0, sizeof(index));
-  memset(vbo.buffers, 0, sizeof(vbo.buffers));
+  dirty_ = ~0u;
+  dirty_sets_ = ~0u;
+  dirty_vbos_ = ~0u;
+  current_pipeline_ = VK_NULL_HANDLE;
+  current_pipeline_layout_ = VK_NULL_HANDLE;
+  current_layout_ = nullptr;
+  current_program_ = nullptr;
+  memset(bindings_.cookies, 0, sizeof(bindings_.cookies));
+  memset(bindings_.secondary_cookies, 0, sizeof(bindings_.secondary_cookies));
+  memset(&index_, 0, sizeof(index_));
+  memset(vbo_.buffers, 0, sizeof(vbo_.buffers));
 }
 
 void CommandBuffer::begin_compute() {
-  is_compute = true;
+  is_compute_ = true;
   begin_context();
 }
 
 void CommandBuffer::begin_graphics() {
-  is_compute = false;
+  is_compute_ = false;
   begin_context();
 }
 
 void CommandBuffer::next_subpass() {
-  VK_ASSERT(framebuffer);
-  VK_ASSERT(render_pass);
-  current_subpass++;
-  VK_ASSERT(current_subpass < render_pass->get_num_subpasses());
-  vkCmdNextSubpass(cmd, VK_SUBPASS_CONTENTS_INLINE);
+  VK_ASSERT(framebuffer_);
+  VK_ASSERT(render_pass_);
+  current_subpass_++;
+  VK_ASSERT(current_subpass_ < render_pass_->get_num_subpasses());
+  vkCmdNextSubpass(cmd_, VK_SUBPASS_CONTENTS_INLINE);
   begin_graphics();
 }
 
 void CommandBuffer::begin_render_pass(const RenderPassInfo& info) {
-  VK_ASSERT(!framebuffer);
-  VK_ASSERT(!render_pass);
+  VK_ASSERT(!framebuffer_);
+  VK_ASSERT(!render_pass_);
 
-  framebuffer = &device->request_framebuffer(info);
-  render_pass = &framebuffer->get_render_pass();
+  framebuffer_ = &device_->request_framebuffer(info);
+  render_pass_ = &framebuffer_->get_render_pass();
 
   VkRect2D rect = info.render_area;
-  rect.offset.x = min(framebuffer->get_width(), uint32_t(rect.offset.x));
-  rect.offset.y = min(framebuffer->get_height(), uint32_t(rect.offset.y));
+  rect.offset.x = min(framebuffer_->get_width(), uint32_t(rect.offset.x));
+  rect.offset.y = min(framebuffer_->get_height(), uint32_t(rect.offset.y));
   rect.extent.width =
-      min(framebuffer->get_width() - rect.offset.x, rect.extent.width);
+      min(framebuffer_->get_width() - rect.offset.x, rect.extent.width);
   rect.extent.height =
-      min(framebuffer->get_height() - rect.offset.y, rect.extent.height);
+      min(framebuffer_->get_height() - rect.offset.y, rect.extent.height);
 
   VkClearValue clear_values[VULKAN_NUM_ATTACHMENTS + 1];
   unsigned num_clear_values = 0;
@@ -416,7 +414,7 @@ void CommandBuffer::begin_render_pass(const RenderPassInfo& info) {
     }
 
     if (info.color_attachments[i]->get_image().is_swapchain_image())
-      uses_swapchain = true;
+      uses_swapchain_ = true;
   }
 
   if (info.depth_stencil &&
@@ -427,32 +425,32 @@ void CommandBuffer::begin_render_pass(const RenderPassInfo& info) {
   }
 
   VkRenderPassBeginInfo begin_info = {VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
-  begin_info.renderPass = render_pass->get_render_pass();
-  begin_info.framebuffer = framebuffer->get_framebuffer();
+  begin_info.renderPass = render_pass_->get_render_pass();
+  begin_info.framebuffer = framebuffer_->get_framebuffer();
   begin_info.renderArea = rect;
   begin_info.clearValueCount = num_clear_values;
   begin_info.pClearValues = clear_values;
 
-  vkCmdBeginRenderPass(cmd, &begin_info, VK_SUBPASS_CONTENTS_INLINE);
+  vkCmdBeginRenderPass(cmd_, &begin_info, VK_SUBPASS_CONTENTS_INLINE);
 
-  viewport = {0.0f,
-              0.0f,
-              float(framebuffer->get_width()),
-              float(framebuffer->get_height()),
-              0.0f,
-              1.0f};
-  scissor = rect;
+  viewport_ = {0.0f,
+               0.0f,
+               float(framebuffer_->get_width()),
+               float(framebuffer_->get_height()),
+               0.0f,
+               1.0f};
+  scissor_ = rect;
   begin_graphics();
 }
 
 void CommandBuffer::end_render_pass() {
-  VK_ASSERT(framebuffer);
-  VK_ASSERT(render_pass);
+  VK_ASSERT(framebuffer_);
+  VK_ASSERT(render_pass_);
 
-  vkCmdEndRenderPass(cmd);
+  vkCmdEndRenderPass(cmd_);
 
-  framebuffer = nullptr;
-  render_pass = nullptr;
+  framebuffer_ = nullptr;
+  render_pass_ = nullptr;
   begin_compute();
 }
 
@@ -468,14 +466,13 @@ VkPipeline CommandBuffer::build_graphics_pipeline(Hash hash) {
       VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO};
   dyn.dynamicStateCount = 2;
   VkDynamicState states[7] = {
-      VK_DYNAMIC_STATE_SCISSOR,
-      VK_DYNAMIC_STATE_VIEWPORT,
+      VK_DYNAMIC_STATE_SCISSOR, VK_DYNAMIC_STATE_VIEWPORT,
   };
   dyn.pDynamicStates = states;
 
-  if (static_state.state.depth_bias_enable)
+  if (static_state_.state.depth_bias_enable)
     states[dyn.dynamicStateCount++] = VK_DYNAMIC_STATE_DEPTH_BIAS;
-  if (static_state.state.stencil_test) {
+  if (static_state_.state.stencil_test) {
     states[dyn.dynamicStateCount++] = VK_DYNAMIC_STATE_STENCIL_COMPARE_MASK;
     states[dyn.dynamicStateCount++] = VK_DYNAMIC_STATE_STENCIL_REFERENCE;
     states[dyn.dynamicStateCount++] = VK_DYNAMIC_STATE_STENCIL_WRITE_MASK;
@@ -486,66 +483,66 @@ VkPipeline CommandBuffer::build_graphics_pipeline(Hash hash) {
   VkPipelineColorBlendStateCreateInfo blend = {
       VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO};
   blend.attachmentCount =
-      render_pass->get_num_color_attachments(current_subpass);
+      render_pass_->get_num_color_attachments(current_subpass_);
   blend.pAttachments = blend_attachments;
   for (unsigned i = 0; i < blend.attachmentCount; i++) {
     auto& att = blend_attachments[i];
     att = {};
 
-    if (render_pass->get_color_attachment(current_subpass, i).attachment !=
+    if (render_pass_->get_color_attachment(current_subpass_, i).attachment !=
             VK_ATTACHMENT_UNUSED &&
-        (current_layout->get_resource_layout().render_target_mask &
+        (current_layout_->get_resource_layout().render_target_mask &
          (1u << i))) {
-      att.colorWriteMask = (static_state.state.write_mask >> (4 * i)) & 0xf;
-      att.blendEnable = static_state.state.blend_enable;
+      att.colorWriteMask = (static_state_.state.write_mask >> (4 * i)) & 0xf;
+      att.blendEnable = static_state_.state.blend_enable;
       if (att.blendEnable) {
         att.alphaBlendOp =
-            static_cast<VkBlendOp>(static_state.state.alpha_blend_op);
+            static_cast<VkBlendOp>(static_state_.state.alpha_blend_op);
         att.colorBlendOp =
-            static_cast<VkBlendOp>(static_state.state.color_blend_op);
+            static_cast<VkBlendOp>(static_state_.state.color_blend_op);
         att.dstAlphaBlendFactor =
-            static_cast<VkBlendFactor>(static_state.state.dst_alpha_blend);
+            static_cast<VkBlendFactor>(static_state_.state.dst_alpha_blend);
         att.srcAlphaBlendFactor =
-            static_cast<VkBlendFactor>(static_state.state.src_alpha_blend);
+            static_cast<VkBlendFactor>(static_state_.state.src_alpha_blend);
         att.dstColorBlendFactor =
-            static_cast<VkBlendFactor>(static_state.state.dst_color_blend);
+            static_cast<VkBlendFactor>(static_state_.state.dst_color_blend);
         att.srcColorBlendFactor =
-            static_cast<VkBlendFactor>(static_state.state.src_color_blend);
+            static_cast<VkBlendFactor>(static_state_.state.src_color_blend);
       }
     }
   }
-  memcpy(blend.blendConstants, potential_static_state.blend_constants,
+  memcpy(blend.blendConstants, potential_static_state_.blend_constants,
          sizeof(blend.blendConstants));
 
   // Depth state
   VkPipelineDepthStencilStateCreateInfo ds = {
       VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO};
-  ds.stencilTestEnable = render_pass->has_stencil(current_subpass) &&
-                         static_state.state.stencil_test;
-  ds.depthTestEnable =
-      render_pass->has_depth(current_subpass) && static_state.state.depth_test;
-  ds.depthWriteEnable =
-      render_pass->has_depth(current_subpass) && static_state.state.depth_write;
+  ds.stencilTestEnable = render_pass_->has_stencil(current_subpass_) &&
+                         static_state_.state.stencil_test;
+  ds.depthTestEnable = render_pass_->has_depth(current_subpass_) &&
+                       static_state_.state.depth_test;
+  ds.depthWriteEnable = render_pass_->has_depth(current_subpass_) &&
+                        static_state_.state.depth_write;
 
   if (ds.depthTestEnable)
     ds.depthCompareOp =
-        static_cast<VkCompareOp>(static_state.state.depth_compare);
+        static_cast<VkCompareOp>(static_state_.state.depth_compare);
 
   if (ds.stencilTestEnable) {
     ds.front.compareOp =
-        static_cast<VkCompareOp>(static_state.state.stencil_front_compare_op);
+        static_cast<VkCompareOp>(static_state_.state.stencil_front_compare_op);
     ds.front.passOp =
-        static_cast<VkStencilOp>(static_state.state.stencil_front_pass);
+        static_cast<VkStencilOp>(static_state_.state.stencil_front_pass);
     ds.front.failOp =
-        static_cast<VkStencilOp>(static_state.state.stencil_front_fail);
+        static_cast<VkStencilOp>(static_state_.state.stencil_front_fail);
     ds.front.depthFailOp =
-        static_cast<VkStencilOp>(static_state.state.stencil_front_depth_fail);
+        static_cast<VkStencilOp>(static_state_.state.stencil_front_depth_fail);
     ds.back.passOp =
-        static_cast<VkStencilOp>(static_state.state.stencil_back_pass);
+        static_cast<VkStencilOp>(static_state_.state.stencil_back_pass);
     ds.back.failOp =
-        static_cast<VkStencilOp>(static_state.state.stencil_back_fail);
+        static_cast<VkStencilOp>(static_state_.state.stencil_back_fail);
     ds.back.depthFailOp =
-        static_cast<VkStencilOp>(static_state.state.stencil_back_depth_fail);
+        static_cast<VkStencilOp>(static_state_.state.stencil_back_depth_fail);
   }
 
   // Vertex input
@@ -553,14 +550,14 @@ VkPipeline CommandBuffer::build_graphics_pipeline(Hash hash) {
       VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO};
   VkVertexInputAttributeDescription vi_attribs[VULKAN_NUM_VERTEX_ATTRIBS];
   vi.pVertexAttributeDescriptions = vi_attribs;
-  uint32_t attr_mask = current_layout->get_resource_layout().attribute_mask;
+  uint32_t attr_mask = current_layout_->get_resource_layout().attribute_mask;
   uint32_t binding_mask = 0;
   for_each_bit(attr_mask, [&](uint32_t bit) {
     auto& attr = vi_attribs[vi.vertexAttributeDescriptionCount++];
     attr.location = bit;
-    attr.binding = attribs[bit].binding;
-    attr.format = attribs[bit].format;
-    attr.offset = attribs[bit].offset;
+    attr.binding = attribs_[bit].binding;
+    attr.format = attribs_[bit].format;
+    attr.offset = attribs_[bit].offset;
     binding_mask |= 1u << attr.binding;
   });
 
@@ -569,38 +566,38 @@ VkPipeline CommandBuffer::build_graphics_pipeline(Hash hash) {
   for_each_bit(binding_mask, [&](uint32_t bit) {
     auto& bind = vi_bindings[vi.vertexBindingDescriptionCount++];
     bind.binding = bit;
-    bind.inputRate = vbo.input_rates[bit];
-    bind.stride = vbo.strides[bit];
+    bind.inputRate = vbo_.input_rates[bit];
+    bind.stride = vbo_.strides[bit];
   });
 
   // Input assembly
   VkPipelineInputAssemblyStateCreateInfo ia = {
       VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO};
-  ia.primitiveRestartEnable = static_state.state.primitive_restart;
-  ia.topology = static_cast<VkPrimitiveTopology>(static_state.state.topology);
+  ia.primitiveRestartEnable = static_state_.state.primitive_restart;
+  ia.topology = static_cast<VkPrimitiveTopology>(static_state_.state.topology);
 
   // Multisample
   VkPipelineMultisampleStateCreateInfo ms = {
       VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO};
   ms.rasterizationSamples = static_cast<VkSampleCountFlagBits>(
-      render_pass->get_sample_count(current_subpass));
+      render_pass_->get_sample_count(current_subpass_));
 
-  if (render_pass->get_sample_count(current_subpass) > 1) {
-    ms.alphaToCoverageEnable = static_state.state.alpha_to_coverage;
-    ms.alphaToOneEnable = static_state.state.alpha_to_one;
-    ms.sampleShadingEnable = static_state.state.sample_shading;
+  if (render_pass_->get_sample_count(current_subpass_) > 1) {
+    ms.alphaToCoverageEnable = static_state_.state.alpha_to_coverage;
+    ms.alphaToOneEnable = static_state_.state.alpha_to_one;
+    ms.sampleShadingEnable = static_state_.state.sample_shading;
     ms.minSampleShading = 1.0f;
   }
 
   // Raster
   VkPipelineRasterizationStateCreateInfo raster = {
       VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO};
-  raster.cullMode = static_cast<VkCullModeFlags>(static_state.state.cull_mode);
-  raster.frontFace = static_cast<VkFrontFace>(static_state.state.front_face);
+  raster.cullMode = static_cast<VkCullModeFlags>(static_state_.state.cull_mode);
+  raster.frontFace = static_cast<VkFrontFace>(static_state_.state.front_face);
   raster.lineWidth = 1.0f;
-  raster.polygonMode = static_state.state.wireframe ? VK_POLYGON_MODE_LINE
-                                                    : VK_POLYGON_MODE_FILL;
-  raster.depthBiasEnable = static_state.state.depth_bias_enable != 0;
+  raster.polygonMode = static_state_.state.wireframe ? VK_POLYGON_MODE_LINE
+                                                     : VK_POLYGON_MODE_FILL;
+  raster.depthBiasEnable = static_state_.state.depth_bias_enable != 0;
 
   // Stages
   VkPipelineShaderStageCreateInfo
@@ -609,10 +606,10 @@ VkPipeline CommandBuffer::build_graphics_pipeline(Hash hash) {
 
   for (unsigned i = 0; i < static_cast<unsigned>(ShaderStage::Count); i++) {
     auto stage = static_cast<ShaderStage>(i);
-    if (current_program->get_shader(stage)) {
+    if (current_program_->get_shader(stage)) {
       auto& s = stages[num_stages++];
       s = {VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO};
-      s.module = current_program->get_shader(stage)->get_module();
+      s.module = current_program_->get_shader(stage)->get_module();
       s.pName = "main";
       s.stage = static_cast<VkShaderStageFlagBits>(1u << i);
     }
@@ -620,9 +617,9 @@ VkPipeline CommandBuffer::build_graphics_pipeline(Hash hash) {
 
   VkGraphicsPipelineCreateInfo pipe = {
       VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO};
-  pipe.layout = current_pipeline_layout;
-  pipe.renderPass = render_pass->get_render_pass();
-  pipe.subpass = current_subpass;
+  pipe.layout = current_pipeline_layout_;
+  pipe.renderPass = render_pass_->get_render_pass();
+  pipe.subpass = current_subpass_;
 
   pipe.pViewportState = &vp;
   pipe.pDynamicState = &dyn;
@@ -635,98 +632,100 @@ VkPipeline CommandBuffer::build_graphics_pipeline(Hash hash) {
   pipe.pStages = stages;
   pipe.stageCount = num_stages;
 
-  VkResult res = vkCreateGraphicsPipelines(device->get_device(), cache, 1,
-                                           &pipe, nullptr, &current_pipeline);
+  VkResult res = vkCreateGraphicsPipelines(device_->get_device(), cache_, 1,
+                                           &pipe, nullptr, &current_pipeline_);
   if (res != VK_SUCCESS)
     LOGE("Failed to create graphics pipeline!\n");
 
-  current_program->add_graphics_pipeline(hash, current_pipeline);
-  return current_pipeline;
+  current_program_->add_graphics_pipeline(hash, current_pipeline_);
+  return current_pipeline_;
 }
 
 void CommandBuffer::flush_graphics_pipeline() {
   Hasher h;
-  active_vbos = 0;
-  auto& layout = current_layout->get_resource_layout();
+  active_vbos_ = 0;
+  auto& layout = current_layout_->get_resource_layout();
   for_each_bit(layout.attribute_mask, [&](uint32_t bit) {
     h.u32(bit);
-    active_vbos |= 1u << attribs[bit].binding;
-    h.u32(attribs[bit].binding);
-    h.u32(attribs[bit].format);
-    h.u32(attribs[bit].offset);
+    active_vbos_ |= 1u << attribs_[bit].binding;
+    h.u32(attribs_[bit].binding);
+    h.u32(attribs_[bit].format);
+    h.u32(attribs_[bit].offset);
   });
 
-  for_each_bit(active_vbos, [&](uint32_t bit) {
-    h.u32(vbo.input_rates[bit]);
-    h.u32(vbo.strides[bit]);
+  for_each_bit(active_vbos_, [&](uint32_t bit) {
+    h.u32(vbo_.input_rates[bit]);
+    h.u32(vbo_.strides[bit]);
   });
 
-  h.u64(render_pass->get_cookie());
-  h.u32(current_subpass);
-  h.u64(current_program->get_cookie());
-  h.data(static_state.words, sizeof(static_state.words));
+  h.u64(render_pass_->get_cookie());
+  h.u32(current_subpass_);
+  h.u64(current_program_->get_cookie());
+  h.data(static_state_.words, sizeof(static_state_.words));
 
-  if (static_state.state.blend_enable) {
+  if (static_state_.state.blend_enable) {
     const auto needs_blend_constant = [](VkBlendFactor factor) {
       return factor == VK_BLEND_FACTOR_CONSTANT_COLOR ||
              factor == VK_BLEND_FACTOR_CONSTANT_ALPHA;
     };
     bool b0 = needs_blend_constant(
-        static_cast<VkBlendFactor>(static_state.state.src_color_blend));
+        static_cast<VkBlendFactor>(static_state_.state.src_color_blend));
     bool b1 = needs_blend_constant(
-        static_cast<VkBlendFactor>(static_state.state.src_alpha_blend));
+        static_cast<VkBlendFactor>(static_state_.state.src_alpha_blend));
     bool b2 = needs_blend_constant(
-        static_cast<VkBlendFactor>(static_state.state.dst_color_blend));
+        static_cast<VkBlendFactor>(static_state_.state.dst_color_blend));
     bool b3 = needs_blend_constant(
-        static_cast<VkBlendFactor>(static_state.state.dst_alpha_blend));
+        static_cast<VkBlendFactor>(static_state_.state.dst_alpha_blend));
     if (b0 || b1 || b2 || b3)
       h.data(
-          reinterpret_cast<uint32_t*>(potential_static_state.blend_constants),
-          sizeof(potential_static_state.blend_constants));
+          reinterpret_cast<uint32_t*>(potential_static_state_.blend_constants),
+          sizeof(potential_static_state_.blend_constants));
   }
 
   auto hash = h.get();
-  current_pipeline = current_program->get_graphics_pipeline(hash);
-  if (current_pipeline == VK_NULL_HANDLE)
-    current_pipeline = build_graphics_pipeline(hash);
+  current_pipeline_ = current_program_->get_graphics_pipeline(hash);
+  if (current_pipeline_ == VK_NULL_HANDLE)
+    current_pipeline_ = build_graphics_pipeline(hash);
 }
 
 void CommandBuffer::flush_compute_state() {
-  VK_ASSERT(current_layout);
-  VK_ASSERT(current_program);
+  VK_ASSERT(current_layout_);
+  VK_ASSERT(current_program_);
 
   if (get_and_clear(COMMAND_BUFFER_DIRTY_PIPELINE_BIT)) {
-    VkPipeline old_pipe = current_pipeline;
-    current_pipeline = current_program->get_compute_pipeline();
-    if (old_pipe != current_pipeline)
-      vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, current_pipeline);
+    VkPipeline old_pipe = current_pipeline_;
+    current_pipeline_ = current_program_->get_compute_pipeline();
+    if (old_pipe != current_pipeline_)
+      vkCmdBindPipeline(cmd_, VK_PIPELINE_BIND_POINT_COMPUTE,
+                        current_pipeline_);
   }
 
   flush_descriptor_sets();
 
   if (get_and_clear(COMMAND_BUFFER_DIRTY_PUSH_CONSTANTS_BIT)) {
-    uint32_t num_ranges = current_layout->get_resource_layout().num_ranges;
+    uint32_t num_ranges = current_layout_->get_resource_layout().num_ranges;
     for (unsigned i = 0; i < num_ranges; i++) {
-      auto& range = current_layout->get_resource_layout().ranges[i];
-      vkCmdPushConstants(cmd, current_pipeline_layout, range.stageFlags,
+      auto& range = current_layout_->get_resource_layout().ranges[i];
+      vkCmdPushConstants(cmd_, current_pipeline_layout_, range.stageFlags,
                          range.offset, range.size,
-                         bindings.push_constant_data + range.offset);
+                         bindings_.push_constant_data + range.offset);
     }
   }
 }
 
 void CommandBuffer::flush_render_state() {
-  VK_ASSERT(current_layout);
-  VK_ASSERT(current_program);
+  VK_ASSERT(current_layout_);
+  VK_ASSERT(current_program_);
 
   // We've invalidated pipeline state, update the VkPipeline.
   if (get_and_clear(COMMAND_BUFFER_DIRTY_STATIC_STATE_BIT |
                     COMMAND_BUFFER_DIRTY_PIPELINE_BIT |
                     COMMAND_BUFFER_DIRTY_STATIC_VERTEX_BIT)) {
-    VkPipeline old_pipe = current_pipeline;
+    VkPipeline old_pipe = current_pipeline_;
     flush_graphics_pipeline();
-    if (old_pipe != current_pipeline) {
-      vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, current_pipeline);
+    if (old_pipe != current_pipeline_) {
+      vkCmdBindPipeline(cmd_, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                        current_pipeline_);
       set_dirty(COMMAND_BUFFER_DYNAMIC_BITS);
     }
   }
@@ -734,50 +733,50 @@ void CommandBuffer::flush_render_state() {
   flush_descriptor_sets();
 
   if (get_and_clear(COMMAND_BUFFER_DIRTY_PUSH_CONSTANTS_BIT)) {
-    uint32_t num_ranges = current_layout->get_resource_layout().num_ranges;
+    uint32_t num_ranges = current_layout_->get_resource_layout().num_ranges;
     for (unsigned i = 0; i < num_ranges; i++) {
-      auto& range = current_layout->get_resource_layout().ranges[i];
-      vkCmdPushConstants(cmd, current_pipeline_layout, range.stageFlags,
+      auto& range = current_layout_->get_resource_layout().ranges[i];
+      vkCmdPushConstants(cmd_, current_pipeline_layout_, range.stageFlags,
                          range.offset, range.size,
-                         bindings.push_constant_data + range.offset);
+                         bindings_.push_constant_data + range.offset);
     }
   }
 
   if (get_and_clear(COMMAND_BUFFER_DIRTY_VIEWPORT_BIT))
-    vkCmdSetViewport(cmd, 0, 1, &viewport);
+    vkCmdSetViewport(cmd_, 0, 1, &viewport_);
   if (get_and_clear(COMMAND_BUFFER_DIRTY_SCISSOR_BIT))
-    vkCmdSetScissor(cmd, 0, 1, &scissor);
-  if (static_state.state.depth_bias_enable &&
+    vkCmdSetScissor(cmd_, 0, 1, &scissor_);
+  if (static_state_.state.depth_bias_enable &&
       get_and_clear(COMMAND_BUFFER_DIRTY_DEPTH_BIAS_BIT))
-    vkCmdSetDepthBias(cmd, dynamic_state.depth_bias_constant, 0.0f,
-                      dynamic_state.depth_bias_slope);
-  if (static_state.state.stencil_test &&
+    vkCmdSetDepthBias(cmd_, dynamic_state_.depth_bias_constant, 0.0f,
+                      dynamic_state_.depth_bias_slope);
+  if (static_state_.state.stencil_test &&
       get_and_clear(COMMAND_BUFFER_DIRTY_STENCIL_REFERENCE_BIT)) {
-    vkCmdSetStencilCompareMask(cmd, VK_STENCIL_FACE_FRONT_BIT,
-                               dynamic_state.front_compare_mask);
-    vkCmdSetStencilReference(cmd, VK_STENCIL_FACE_FRONT_BIT,
-                             dynamic_state.front_reference);
-    vkCmdSetStencilWriteMask(cmd, VK_STENCIL_FACE_FRONT_BIT,
-                             dynamic_state.front_write_mask);
-    vkCmdSetStencilCompareMask(cmd, VK_STENCIL_FACE_BACK_BIT,
-                               dynamic_state.back_compare_mask);
-    vkCmdSetStencilReference(cmd, VK_STENCIL_FACE_BACK_BIT,
-                             dynamic_state.back_reference);
-    vkCmdSetStencilWriteMask(cmd, VK_STENCIL_FACE_BACK_BIT,
-                             dynamic_state.back_write_mask);
+    vkCmdSetStencilCompareMask(cmd_, VK_STENCIL_FACE_FRONT_BIT,
+                               dynamic_state_.front_compare_mask);
+    vkCmdSetStencilReference(cmd_, VK_STENCIL_FACE_FRONT_BIT,
+                             dynamic_state_.front_reference);
+    vkCmdSetStencilWriteMask(cmd_, VK_STENCIL_FACE_FRONT_BIT,
+                             dynamic_state_.front_write_mask);
+    vkCmdSetStencilCompareMask(cmd_, VK_STENCIL_FACE_BACK_BIT,
+                               dynamic_state_.back_compare_mask);
+    vkCmdSetStencilReference(cmd_, VK_STENCIL_FACE_BACK_BIT,
+                             dynamic_state_.back_reference);
+    vkCmdSetStencilWriteMask(cmd_, VK_STENCIL_FACE_BACK_BIT,
+                             dynamic_state_.back_write_mask);
   }
 
-  uint32_t update_vbo_mask = dirty_vbos & active_vbos;
+  uint32_t update_vbo_mask = dirty_vbos_ & active_vbos_;
   for_each_bit_range(
       update_vbo_mask, [&](uint32_t binding, uint32_t binding_count) {
 #ifdef VULKAN_DEBUG
         for (unsigned i = binding; i < binding + binding_count; i++)
-          VK_ASSERT(vbo.buffers[i] != VK_NULL_HANDLE);
+          VK_ASSERT(vbo_.buffers[i] != VK_NULL_HANDLE);
 #endif
-        vkCmdBindVertexBuffers(cmd, binding, binding_count,
-                               vbo.buffers + binding, vbo.offsets + binding);
+        vkCmdBindVertexBuffers(cmd_, binding, binding_count,
+                               vbo_.buffers + binding, vbo_.offsets + binding);
       });
-  dirty_vbos &= ~update_vbo_mask;
+  dirty_vbos_ &= ~update_vbo_mask;
 }
 
 void CommandBuffer::wait_events(unsigned num_events,
@@ -790,17 +789,17 @@ void CommandBuffer::wait_events(unsigned num_events,
                                 const VkBufferMemoryBarrier* buffers,
                                 unsigned image_barriers,
                                 const VkImageMemoryBarrier* images) {
-  VK_ASSERT(!framebuffer);
-  VK_ASSERT(!render_pass);
-  vkCmdWaitEvents(cmd, num_events, events, src_stages, dst_stages, barriers,
+  VK_ASSERT(!framebuffer_);
+  VK_ASSERT(!render_pass_);
+  vkCmdWaitEvents(cmd_, num_events, events, src_stages, dst_stages, barriers,
                   globals, buffer_barriers, buffers, image_barriers, images);
 }
 
 PipelineEvent CommandBuffer::signal_event(VkPipelineStageFlags stages) {
-  VK_ASSERT(!framebuffer);
-  VK_ASSERT(!render_pass);
-  auto event = device->request_pipeline_event();
-  vkCmdSetEvent(cmd, event->get_event(), stages);
+  VK_ASSERT(!framebuffer_);
+  VK_ASSERT(!render_pass_);
+  auto event = device_->request_pipeline_event();
+  vkCmdSetEvent(cmd_, event->get_event(), stages);
   event->set_stages(stages);
   return event;
 }
@@ -810,9 +809,9 @@ void CommandBuffer::set_vertex_attrib(uint32_t attrib,
                                       VkFormat format,
                                       VkDeviceSize offset) {
   VK_ASSERT(attrib < VULKAN_NUM_VERTEX_ATTRIBS);
-  VK_ASSERT(framebuffer);
+  VK_ASSERT(framebuffer_);
 
-  auto& attr = attribs[attrib];
+  auto& attr = attribs_[attrib];
 
   if (attr.binding != binding || attr.format != format || attr.offset != offset)
     set_dirty(COMMAND_BUFFER_DIRTY_STATIC_VERTEX_BIT);
@@ -827,14 +826,14 @@ void CommandBuffer::set_vertex_attrib(uint32_t attrib,
 void CommandBuffer::set_index_buffer(const Buffer& buffer,
                                      VkDeviceSize offset,
                                      VkIndexType index_type) {
-  if (index.buffer == buffer.get_buffer() && index.offset == offset &&
-      index.index_type == index_type)
+  if (index_.buffer == buffer.get_buffer() && index_.offset == offset &&
+      index_.index_type == index_type)
     return;
 
-  index.buffer = buffer.get_buffer();
-  index.offset = offset;
-  index.index_type = index_type;
-  vkCmdBindIndexBuffer(cmd, buffer.get_buffer(), offset, index_type);
+  index_.buffer = buffer.get_buffer();
+  index_.offset = offset;
+  index_.index_type = index_type;
+  vkCmdBindIndexBuffer(cmd_, buffer.get_buffer(), offset, index_type);
 }
 
 void CommandBuffer::set_vertex_binding(uint32_t binding,
@@ -843,35 +842,35 @@ void CommandBuffer::set_vertex_binding(uint32_t binding,
                                        VkDeviceSize stride,
                                        VkVertexInputRate step_rate) {
   VK_ASSERT(binding < VULKAN_NUM_VERTEX_BUFFERS);
-  VK_ASSERT(framebuffer);
+  VK_ASSERT(framebuffer_);
 
   VkBuffer vkbuffer = buffer.get_buffer();
-  if (vbo.buffers[binding] != vkbuffer || vbo.offsets[binding] != offset)
-    dirty_vbos |= 1u << binding;
-  if (vbo.strides[binding] != stride || vbo.input_rates[binding] != step_rate)
+  if (vbo_.buffers[binding] != vkbuffer || vbo_.offsets[binding] != offset)
+    dirty_vbos_ |= 1u << binding;
+  if (vbo_.strides[binding] != stride || vbo_.input_rates[binding] != step_rate)
     set_dirty(COMMAND_BUFFER_DIRTY_STATIC_VERTEX_BIT);
 
-  vbo.buffers[binding] = vkbuffer;
-  vbo.offsets[binding] = offset;
-  vbo.strides[binding] = stride;
-  vbo.input_rates[binding] = step_rate;
+  vbo_.buffers[binding] = vkbuffer;
+  vbo_.offsets[binding] = offset;
+  vbo_.strides[binding] = stride;
+  vbo_.input_rates[binding] = step_rate;
 }
 
 void CommandBuffer::set_viewport(const VkViewport& viewport) {
-  VK_ASSERT(framebuffer);
-  this->viewport = viewport;
+  VK_ASSERT(framebuffer_);
+  viewport_ = viewport;
   set_dirty(COMMAND_BUFFER_DIRTY_VIEWPORT_BIT);
 }
 
 const VkViewport& CommandBuffer::get_viewport() const {
-  return this->viewport;
+  return viewport_;
 }
 
 void CommandBuffer::set_scissor(const VkRect2D& rect) {
-  VK_ASSERT(framebuffer);
+  VK_ASSERT(framebuffer_);
   VK_ASSERT(rect.offset.x >= 0);
   VK_ASSERT(rect.offset.y >= 0);
-  scissor = rect;
+  scissor_ = rect;
   set_dirty(COMMAND_BUFFER_DIRTY_SCISSOR_BIT);
 }
 
@@ -879,67 +878,68 @@ void CommandBuffer::push_constants(const void* data,
                                    VkDeviceSize offset,
                                    VkDeviceSize range) {
   VK_ASSERT(offset + range <= VULKAN_PUSH_CONSTANT_SIZE);
-  memcpy(bindings.push_constant_data + offset, data, range);
+  memcpy(bindings_.push_constant_data + offset, data, range);
   set_dirty(COMMAND_BUFFER_DIRTY_PUSH_CONSTANTS_BIT);
 }
 
 void CommandBuffer::set_program(Program& program) {
-  if (current_program && current_program->get_cookie() == program.get_cookie())
+  if (current_program_ &&
+      current_program_->get_cookie() == program.get_cookie())
     return;
 
-  current_program = &program;
-  current_pipeline = VK_NULL_HANDLE;
+  current_program_ = &program;
+  current_pipeline_ = VK_NULL_HANDLE;
 
   VK_ASSERT(
-      (framebuffer && current_program->get_shader(ShaderStage::Vertex)) ||
-      (!framebuffer && current_program->get_shader(ShaderStage::Compute)));
+      (framebuffer_ && current_program_->get_shader(ShaderStage::Vertex)) ||
+      (!framebuffer_ && current_program_->get_shader(ShaderStage::Compute)));
 
   set_dirty(COMMAND_BUFFER_DIRTY_PIPELINE_BIT | COMMAND_BUFFER_DYNAMIC_BITS);
 
-  if (!current_layout) {
-    dirty_sets = ~0u;
+  if (!current_layout_) {
+    dirty_sets_ = ~0u;
     set_dirty(COMMAND_BUFFER_DIRTY_PUSH_CONSTANTS_BIT);
 
-    current_layout = program.get_pipeline_layout();
-    current_pipeline_layout = current_layout->get_layout();
+    current_layout_ = program.get_pipeline_layout();
+    current_pipeline_layout_ = current_layout_->get_layout();
   } else if (program.get_pipeline_layout()->get_cookie() !=
-             current_layout->get_cookie()) {
+             current_layout_->get_cookie()) {
     auto& new_layout = program.get_pipeline_layout()->get_resource_layout();
-    auto& old_layout = current_layout->get_resource_layout();
+    auto& old_layout = current_layout_->get_resource_layout();
 
     // If the push constant layout changes, all descriptor sets
     // are invalidated.
     if (new_layout.push_constant_layout_hash !=
         old_layout.push_constant_layout_hash) {
-      dirty_sets = ~0u;
+      dirty_sets_ = ~0u;
       set_dirty(COMMAND_BUFFER_DIRTY_PUSH_CONSTANTS_BIT);
     } else {
       // Find the first set whose descriptor set layout differs.
       auto* new_pipe_layout = program.get_pipeline_layout();
       for (unsigned set = 0; set < VULKAN_NUM_DESCRIPTOR_SETS; set++) {
         if (new_pipe_layout->get_allocator(set) !=
-            current_layout->get_allocator(set)) {
-          dirty_sets |= ~((1u << set) - 1);
+            current_layout_->get_allocator(set)) {
+          dirty_sets_ |= ~((1u << set) - 1);
           break;
         }
       }
     }
-    current_layout = program.get_pipeline_layout();
-    current_pipeline_layout = current_layout->get_layout();
+    current_layout_ = program.get_pipeline_layout();
+    current_pipeline_layout_ = current_layout_->get_layout();
   }
 }
 
 void* CommandBuffer::allocate_constant_data(unsigned set,
                                             unsigned binding,
                                             VkDeviceSize size) {
-  auto data = device->allocate_constant_data(size);
+  auto data = device_->allocate_constant_data(size);
   set_uniform_buffer(set, binding, *data.buffer, data.offset, size);
   return data.data;
 }
 
 void* CommandBuffer::allocate_index_data(VkDeviceSize size,
                                          VkIndexType index_type) {
-  auto data = device->allocate_index_data(size);
+  auto data = device_->allocate_index_data(size);
   set_index_buffer(*data.buffer, data.offset, index_type);
   return data.data;
 }
@@ -947,7 +947,7 @@ void* CommandBuffer::allocate_index_data(VkDeviceSize size,
 void* CommandBuffer::update_buffer(const Buffer& buffer,
                                    VkDeviceSize offset,
                                    VkDeviceSize size) {
-  auto data = device->allocate_staging_data(size);
+  auto data = device_->allocate_staging_data(size);
   copy_buffer(buffer, offset, *data.buffer, data.offset, size);
   return data.data;
 }
@@ -975,7 +975,7 @@ void* CommandBuffer::update_image(const Image& image,
   VkDeviceSize size = format_block_size(create_info.format) *
                       subresource.layerCount * depth * blocks_x * blocks_y;
 
-  auto data = device->allocate_staging_data(size);
+  auto data = device_->allocate_staging_data(size);
   copy_buffer_to_image(image, *data.buffer, data.offset, offset, extent,
                        row_length, image_height, subresource);
   return data.data;
@@ -985,22 +985,18 @@ void* CommandBuffer::update_image(const Image& image,
                                   uint32_t row_length,
                                   uint32_t image_height) {
   const VkImageSubresourceLayers subresource = {
-      format_to_aspect_mask(image.get_format()),
-      0,
-      0,
-      1,
+      format_to_aspect_mask(image.get_format()), 0, 0, 1,
   };
-  return update_image(
-      image, {0, 0, 0},
-      {image.get_width(), image.get_height(), image.get_depth()}, row_length,
-      image_height, subresource);
+  return update_image(image, {0, 0, 0}, {image.get_width(), image.get_height(),
+                                         image.get_depth()},
+                      row_length, image_height, subresource);
 }
 
 void* CommandBuffer::allocate_vertex_data(unsigned binding,
                                           VkDeviceSize size,
                                           VkDeviceSize stride,
                                           VkVertexInputRate step_rate) {
-  auto data = device->allocate_vertex_data(size);
+  auto data = device_->allocate_vertex_data(size);
   set_vertex_binding(binding, *data.buffer, data.offset, stride, step_rate);
   return data.data;
 }
@@ -1014,15 +1010,15 @@ void CommandBuffer::set_uniform_buffer(unsigned set,
   VK_ASSERT(binding < VULKAN_NUM_BINDINGS);
   VK_ASSERT(buffer.get_create_info().usage &
             VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
-  auto& b = bindings.bindings[set][binding];
+  auto& b = bindings_.bindings[set][binding];
 
-  if (buffer.get_cookie() == bindings.cookies[set][binding] &&
+  if (buffer.get_cookie() == bindings_.cookies[set][binding] &&
       b.buffer.offset == offset && b.buffer.range == range)
     return;
 
   b.buffer = {buffer.get_buffer(), offset, range};
-  bindings.cookies[set][binding] = buffer.get_cookie();
-  dirty_sets |= 1u << set;
+  bindings_.cookies[set][binding] = buffer.get_cookie();
+  dirty_sets_ |= 1u << set;
 }
 
 void CommandBuffer::set_storage_buffer(unsigned set,
@@ -1034,15 +1030,15 @@ void CommandBuffer::set_storage_buffer(unsigned set,
   VK_ASSERT(binding < VULKAN_NUM_BINDINGS);
   VK_ASSERT(buffer.get_create_info().usage &
             VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
-  auto& b = bindings.bindings[set][binding];
+  auto& b = bindings_.bindings[set][binding];
 
-  if (buffer.get_cookie() == bindings.cookies[set][binding] &&
+  if (buffer.get_cookie() == bindings_.cookies[set][binding] &&
       b.buffer.offset == offset && b.buffer.range == range)
     return;
 
   b.buffer = {buffer.get_buffer(), offset, range};
-  bindings.cookies[set][binding] = buffer.get_cookie();
-  dirty_sets |= 1u << set;
+  bindings_.cookies[set][binding] = buffer.get_cookie();
+  dirty_sets_ |= 1u << set;
 }
 
 void CommandBuffer::set_uniform_buffer(unsigned set,
@@ -1062,14 +1058,14 @@ void CommandBuffer::set_sampler(unsigned set,
                                 const Sampler& sampler) {
   VK_ASSERT(set < VULKAN_NUM_DESCRIPTOR_SETS);
   VK_ASSERT(binding < VULKAN_NUM_BINDINGS);
-  if (sampler.get_cookie() == bindings.secondary_cookies[set][binding])
+  if (sampler.get_cookie() == bindings_.secondary_cookies[set][binding])
     return;
 
-  auto& b = bindings.bindings[set][binding];
+  auto& b = bindings_.bindings[set][binding];
   b.image.fp.sampler = sampler.get_sampler();
   b.image.integer.sampler = sampler.get_sampler();
-  dirty_sets |= 1u << set;
-  bindings.secondary_cookies[set][binding] = sampler.get_cookie();
+  dirty_sets_ |= 1u << set;
+  bindings_.secondary_cookies[set][binding] = sampler.get_cookie();
 }
 
 void CommandBuffer::set_buffer_view(unsigned set,
@@ -1079,45 +1075,45 @@ void CommandBuffer::set_buffer_view(unsigned set,
   VK_ASSERT(binding < VULKAN_NUM_BINDINGS);
   VK_ASSERT(view.get_buffer().get_create_info().usage &
             VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT);
-  if (view.get_cookie() == bindings.cookies[set][binding])
+  if (view.get_cookie() == bindings_.cookies[set][binding])
     return;
-  auto& b = bindings.bindings[set][binding];
+  auto& b = bindings_.bindings[set][binding];
   b.buffer_view = view.get_view();
-  bindings.cookies[set][binding] = view.get_cookie();
-  dirty_sets |= 1u << set;
+  bindings_.cookies[set][binding] = view.get_cookie();
+  dirty_sets_ |= 1u << set;
 }
 
 void CommandBuffer::set_input_attachments(unsigned set,
                                           unsigned start_binding) {
   VK_ASSERT(set < VULKAN_NUM_DESCRIPTOR_SETS);
   VK_ASSERT(start_binding +
-                render_pass->get_num_input_attachments(current_subpass) <=
+                render_pass_->get_num_input_attachments(current_subpass_) <=
             VULKAN_NUM_BINDINGS);
   unsigned num_input_attachments =
-      render_pass->get_num_input_attachments(current_subpass);
+      render_pass_->get_num_input_attachments(current_subpass_);
   for (unsigned i = 0; i < num_input_attachments; i++) {
-    auto& ref = render_pass->get_input_attachment(current_subpass, i);
+    auto& ref = render_pass_->get_input_attachment(current_subpass_, i);
     if (ref.attachment == VK_ATTACHMENT_UNUSED)
       continue;
 
-    ImageView* view = framebuffer->get_attachment(ref.attachment);
+    ImageView* view = framebuffer_->get_attachment(ref.attachment);
     VK_ASSERT(view);
     VK_ASSERT(view->get_image().get_create_info().usage &
               VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT);
 
-    if (view->get_cookie() == bindings.cookies[set][start_binding + i] &&
-        bindings.bindings[set][start_binding + i].image.fp.imageLayout ==
+    if (view->get_cookie() == bindings_.cookies[set][start_binding + i] &&
+        bindings_.bindings[set][start_binding + i].image.fp.imageLayout ==
             ref.layout) {
       continue;
     }
 
-    auto& b = bindings.bindings[set][start_binding + i];
+    auto& b = bindings_.bindings[set][start_binding + i];
     b.image.fp.imageLayout = ref.layout;
     b.image.integer.imageLayout = ref.layout;
     b.image.fp.imageView = view->get_float_view();
     b.image.integer.imageView = view->get_integer_view();
-    bindings.cookies[set][start_binding + i] = view->get_cookie();
-    dirty_sets |= 1u << set;
+    bindings_.cookies[set][start_binding + i] = view->get_cookie();
+    dirty_sets_ |= 1u << set;
   }
 }
 
@@ -1128,18 +1124,18 @@ void CommandBuffer::set_texture(unsigned set,
   VK_ASSERT(binding < VULKAN_NUM_BINDINGS);
   VK_ASSERT(view.get_image().get_create_info().usage &
             VK_IMAGE_USAGE_SAMPLED_BIT);
-  if (view.get_cookie() == bindings.cookies[set][binding] &&
-      bindings.bindings[set][binding].image.fp.imageLayout ==
+  if (view.get_cookie() == bindings_.cookies[set][binding] &&
+      bindings_.bindings[set][binding].image.fp.imageLayout ==
           view.get_image().get_layout())
     return;
 
-  auto& b = bindings.bindings[set][binding];
+  auto& b = bindings_.bindings[set][binding];
   b.image.fp.imageLayout = view.get_image().get_layout();
   b.image.fp.imageView = view.get_float_view();
   b.image.integer.imageLayout = view.get_image().get_layout();
   b.image.integer.imageView = view.get_integer_view();
-  bindings.cookies[set][binding] = view.get_cookie();
-  dirty_sets |= 1u << set;
+  bindings_.cookies[set][binding] = view.get_cookie();
+  dirty_sets_ |= 1u << set;
 }
 
 void CommandBuffer::set_texture(unsigned set,
@@ -1150,22 +1146,22 @@ void CommandBuffer::set_texture(unsigned set,
   VK_ASSERT(binding < VULKAN_NUM_BINDINGS);
   VK_ASSERT(view.get_image().get_create_info().usage &
             VK_IMAGE_USAGE_SAMPLED_BIT);
-  if (view.get_cookie() == bindings.cookies[set][binding] &&
-      bindings.bindings[set][binding].image.fp.imageLayout ==
+  if (view.get_cookie() == bindings_.cookies[set][binding] &&
+      bindings_.bindings[set][binding].image.fp.imageLayout ==
           view.get_image().get_layout() &&
-      sampler.get_cookie() == bindings.secondary_cookies[set][binding])
+      sampler.get_cookie() == bindings_.secondary_cookies[set][binding])
     return;
 
-  auto& b = bindings.bindings[set][binding];
+  auto& b = bindings_.bindings[set][binding];
   b.image.fp.imageLayout = view.get_image().get_layout();
   b.image.fp.imageView = view.get_float_view();
   b.image.fp.sampler = sampler.get_sampler();
   b.image.integer.imageLayout = view.get_image().get_layout();
   b.image.integer.imageView = view.get_integer_view();
   b.image.integer.sampler = sampler.get_sampler();
-  bindings.cookies[set][binding] = view.get_cookie();
-  bindings.secondary_cookies[set][binding] = sampler.get_cookie();
-  dirty_sets |= 1u << set;
+  bindings_.cookies[set][binding] = view.get_cookie();
+  bindings_.secondary_cookies[set][binding] = sampler.get_cookie();
+  dirty_sets_ |= 1u << set;
 }
 
 void CommandBuffer::set_texture(unsigned set,
@@ -1176,7 +1172,7 @@ void CommandBuffer::set_texture(unsigned set,
   VK_ASSERT(binding < VULKAN_NUM_BINDINGS);
   VK_ASSERT(view.get_image().get_create_info().usage &
             VK_IMAGE_USAGE_SAMPLED_BIT);
-  const auto& sampler = device->get_stock_sampler(stock);
+  const auto& sampler = device_->get_stock_sampler(stock);
   set_texture(set, binding, view, sampler);
 }
 
@@ -1188,22 +1184,22 @@ void CommandBuffer::set_storage_texture(unsigned set,
   VK_ASSERT(view.get_image().get_create_info().usage &
             VK_IMAGE_USAGE_STORAGE_BIT);
 
-  if (view.get_cookie() == bindings.cookies[set][binding] &&
-      bindings.bindings[set][binding].image.fp.imageLayout ==
+  if (view.get_cookie() == bindings_.cookies[set][binding] &&
+      bindings_.bindings[set][binding].image.fp.imageLayout ==
           view.get_image().get_layout())
     return;
 
-  auto& b = bindings.bindings[set][binding];
+  auto& b = bindings_.bindings[set][binding];
   b.image.fp.imageLayout = view.get_image().get_layout();
   b.image.fp.imageView = view.get_float_view();
   b.image.integer.imageLayout = view.get_image().get_layout();
   b.image.integer.imageView = view.get_integer_view();
-  bindings.cookies[set][binding] = view.get_cookie();
-  dirty_sets |= 1u << set;
+  bindings_.cookies[set][binding] = view.get_cookie();
+  dirty_sets_ |= 1u << set;
 }
 
 void CommandBuffer::flush_descriptor_set(uint32_t set) {
-  auto& layout = current_layout->get_resource_layout();
+  auto& layout = current_layout_->get_resource_layout();
   auto& set_layout = layout.sets[set];
   uint32_t num_dynamic_offsets = 0;
   uint32_t dynamic_offsets[VULKAN_NUM_BINDINGS];
@@ -1213,57 +1209,57 @@ void CommandBuffer::flush_descriptor_set(uint32_t set) {
 
   // UBOs
   for_each_bit(set_layout.uniform_buffer_mask, [&](uint32_t binding) {
-    h.u64(bindings.cookies[set][binding]);
-    h.u32(bindings.bindings[set][binding].buffer.range);
-    VK_ASSERT(bindings.bindings[set][binding].buffer.buffer != VK_NULL_HANDLE);
+    h.u64(bindings_.cookies[set][binding]);
+    h.u32(bindings_.bindings[set][binding].buffer.range);
+    VK_ASSERT(bindings_.bindings[set][binding].buffer.buffer != VK_NULL_HANDLE);
 
     dynamic_offsets[num_dynamic_offsets++] =
-        bindings.bindings[set][binding].buffer.offset;
+        bindings_.bindings[set][binding].buffer.offset;
   });
 
   // SSBOs
   for_each_bit(set_layout.storage_buffer_mask, [&](uint32_t binding) {
-    h.u64(bindings.cookies[set][binding]);
-    h.u32(bindings.bindings[set][binding].buffer.offset);
-    h.u32(bindings.bindings[set][binding].buffer.range);
-    VK_ASSERT(bindings.bindings[set][binding].buffer.buffer != VK_NULL_HANDLE);
+    h.u64(bindings_.cookies[set][binding]);
+    h.u32(bindings_.bindings[set][binding].buffer.offset);
+    h.u32(bindings_.bindings[set][binding].buffer.range);
+    VK_ASSERT(bindings_.bindings[set][binding].buffer.buffer != VK_NULL_HANDLE);
   });
 
   // Sampled buffers
   for_each_bit(set_layout.sampled_buffer_mask, [&](uint32_t binding) {
-    h.u64(bindings.cookies[set][binding]);
-    VK_ASSERT(bindings.bindings[set][binding].buffer_view != VK_NULL_HANDLE);
+    h.u64(bindings_.cookies[set][binding]);
+    VK_ASSERT(bindings_.bindings[set][binding].buffer_view != VK_NULL_HANDLE);
   });
 
   // Sampled images
   for_each_bit(set_layout.sampled_image_mask, [&](uint32_t binding) {
-    h.u64(bindings.cookies[set][binding]);
-    h.u64(bindings.secondary_cookies[set][binding]);
-    h.u32(bindings.bindings[set][binding].image.fp.imageLayout);
-    VK_ASSERT(bindings.bindings[set][binding].image.fp.imageView !=
+    h.u64(bindings_.cookies[set][binding]);
+    h.u64(bindings_.secondary_cookies[set][binding]);
+    h.u32(bindings_.bindings[set][binding].image.fp.imageLayout);
+    VK_ASSERT(bindings_.bindings[set][binding].image.fp.imageView !=
               VK_NULL_HANDLE);
-    VK_ASSERT(bindings.bindings[set][binding].image.fp.sampler !=
+    VK_ASSERT(bindings_.bindings[set][binding].image.fp.sampler !=
               VK_NULL_HANDLE);
   });
 
   // Storage images
   for_each_bit(set_layout.storage_image_mask, [&](uint32_t binding) {
-    h.u64(bindings.cookies[set][binding]);
-    h.u32(bindings.bindings[set][binding].image.fp.imageLayout);
-    VK_ASSERT(bindings.bindings[set][binding].image.fp.imageView !=
+    h.u64(bindings_.cookies[set][binding]);
+    h.u32(bindings_.bindings[set][binding].image.fp.imageLayout);
+    VK_ASSERT(bindings_.bindings[set][binding].image.fp.imageView !=
               VK_NULL_HANDLE);
   });
 
   // Input attachments
   for_each_bit(set_layout.input_attachment_mask, [&](uint32_t binding) {
-    h.u64(bindings.cookies[set][binding]);
-    h.u32(bindings.bindings[set][binding].image.fp.imageLayout);
-    VK_ASSERT(bindings.bindings[set][binding].image.fp.imageView !=
+    h.u64(bindings_.cookies[set][binding]);
+    h.u32(bindings_.bindings[set][binding].image.fp.imageLayout);
+    VK_ASSERT(bindings_.bindings[set][binding].image.fp.imageView !=
               VK_NULL_HANDLE);
   });
 
   Hash hash = h.get();
-  auto allocated = current_layout->get_allocator(set)->find(hash);
+  auto allocated = current_layout_->get_allocator(set)->find(hash);
 
   // The descriptor set was not successfully cached, rebuild.
   if (!allocated.second) {
@@ -1284,7 +1280,7 @@ void CommandBuffer::flush_descriptor_set(uint32_t set) {
 
       // Offsets are applied dynamically.
       auto& buffer = buffer_info[buffer_info_count++];
-      buffer = bindings.bindings[set][binding].buffer;
+      buffer = bindings_.bindings[set][binding].buffer;
       buffer.offset = 0;
       write.pBufferInfo = &buffer;
     });
@@ -1298,7 +1294,7 @@ void CommandBuffer::flush_descriptor_set(uint32_t set) {
       write.dstArrayElement = 0;
       write.dstBinding = binding;
       write.dstSet = allocated.first;
-      write.pBufferInfo = &bindings.bindings[set][binding].buffer;
+      write.pBufferInfo = &bindings_.bindings[set][binding].buffer;
     });
 
     for_each_bit(set_layout.sampled_buffer_mask, [&](uint32_t binding) {
@@ -1310,7 +1306,7 @@ void CommandBuffer::flush_descriptor_set(uint32_t set) {
       write.dstArrayElement = 0;
       write.dstBinding = binding;
       write.dstSet = allocated.first;
-      write.pTexelBufferView = &bindings.bindings[set][binding].buffer_view;
+      write.pTexelBufferView = &bindings_.bindings[set][binding].buffer_view;
     });
 
     for_each_bit(set_layout.sampled_image_mask, [&](uint32_t binding) {
@@ -1324,9 +1320,9 @@ void CommandBuffer::flush_descriptor_set(uint32_t set) {
       write.dstSet = allocated.first;
 
       if (set_layout.fp_mask & (1u << binding))
-        write.pImageInfo = &bindings.bindings[set][binding].image.fp;
+        write.pImageInfo = &bindings_.bindings[set][binding].image.fp;
       else
-        write.pImageInfo = &bindings.bindings[set][binding].image.integer;
+        write.pImageInfo = &bindings_.bindings[set][binding].image.integer;
     });
 
     for_each_bit(set_layout.storage_image_mask, [&](uint32_t binding) {
@@ -1340,9 +1336,9 @@ void CommandBuffer::flush_descriptor_set(uint32_t set) {
       write.dstSet = allocated.first;
 
       if (set_layout.fp_mask & (1u << binding))
-        write.pImageInfo = &bindings.bindings[set][binding].image.fp;
+        write.pImageInfo = &bindings_.bindings[set][binding].image.fp;
       else
-        write.pImageInfo = &bindings.bindings[set][binding].image.integer;
+        write.pImageInfo = &bindings_.bindings[set][binding].image.integer;
     });
 
     for_each_bit(set_layout.input_attachment_mask, [&](uint32_t binding) {
@@ -1355,37 +1351,36 @@ void CommandBuffer::flush_descriptor_set(uint32_t set) {
       write.dstBinding = binding;
       write.dstSet = allocated.first;
       if (set_layout.fp_mask & (1u << binding))
-        write.pImageInfo = &bindings.bindings[set][binding].image.fp;
+        write.pImageInfo = &bindings_.bindings[set][binding].image.fp;
       else
-        write.pImageInfo = &bindings.bindings[set][binding].image.integer;
+        write.pImageInfo = &bindings_.bindings[set][binding].image.integer;
     });
 
-    vkUpdateDescriptorSets(device->get_device(), write_count, writes, 0,
+    vkUpdateDescriptorSets(device_->get_device(), write_count, writes, 0,
                            nullptr);
   }
 
-  vkCmdBindDescriptorSets(cmd,
-                          render_pass ? VK_PIPELINE_BIND_POINT_GRAPHICS
-                                      : VK_PIPELINE_BIND_POINT_COMPUTE,
-                          current_pipeline_layout, set, 1, &allocated.first,
+  vkCmdBindDescriptorSets(cmd_, render_pass_ ? VK_PIPELINE_BIND_POINT_GRAPHICS
+                                             : VK_PIPELINE_BIND_POINT_COMPUTE,
+                          current_pipeline_layout_, set, 1, &allocated.first,
                           num_dynamic_offsets, dynamic_offsets);
 }
 
 void CommandBuffer::flush_descriptor_sets() {
-  auto& layout = current_layout->get_resource_layout();
-  uint32_t set_update = layout.descriptor_set_mask & dirty_sets;
+  auto& layout = current_layout_->get_resource_layout();
+  uint32_t set_update = layout.descriptor_set_mask & dirty_sets_;
   for_each_bit(set_update, [&](uint32_t set) { flush_descriptor_set(set); });
-  dirty_sets &= ~set_update;
+  dirty_sets_ &= ~set_update;
 }
 
 void CommandBuffer::draw(uint32_t vertex_count,
                          uint32_t instance_count,
                          uint32_t first_vertex,
                          uint32_t first_instance) {
-  VK_ASSERT(current_program);
-  VK_ASSERT(!is_compute);
+  VK_ASSERT(current_program_);
+  VK_ASSERT(!is_compute_);
   flush_render_state();
-  vkCmdDraw(cmd, vertex_count, instance_count, first_vertex, first_instance);
+  vkCmdDraw(cmd_, vertex_count, instance_count, first_vertex, first_instance);
 }
 
 void CommandBuffer::draw_indexed(uint32_t index_count,
@@ -1393,25 +1388,25 @@ void CommandBuffer::draw_indexed(uint32_t index_count,
                                  uint32_t first_index,
                                  int32_t vertex_offset,
                                  uint32_t first_instance) {
-  VK_ASSERT(current_program);
-  VK_ASSERT(!is_compute);
-  VK_ASSERT(index.buffer != VK_NULL_HANDLE);
+  VK_ASSERT(current_program_);
+  VK_ASSERT(!is_compute_);
+  VK_ASSERT(index_.buffer != VK_NULL_HANDLE);
   flush_render_state();
-  vkCmdDrawIndexed(cmd, index_count, instance_count, first_index, vertex_offset,
-                   first_instance);
+  vkCmdDrawIndexed(cmd_, index_count, instance_count, first_index,
+                   vertex_offset, first_instance);
 }
 
 void CommandBuffer::dispatch(uint32_t groups_x,
                              uint32_t groups_y,
                              uint32_t groups_z) {
-  VK_ASSERT(current_program);
-  VK_ASSERT(is_compute);
+  VK_ASSERT(current_program_);
+  VK_ASSERT(is_compute_);
   flush_compute_state();
-  vkCmdDispatch(cmd, groups_x, groups_y, groups_z);
+  vkCmdDispatch(cmd_, groups_x, groups_y, groups_z);
 }
 
 void CommandBuffer::set_opaque_state() {
-  auto& state = static_state.state;
+  auto& state = static_state_.state;
   memset(&state, 0, sizeof(state));
   state.front_face = VK_FRONT_FACE_COUNTER_CLOCKWISE;
   state.cull_mode = VK_CULL_MODE_BACK_BIT;
@@ -1429,7 +1424,7 @@ void CommandBuffer::set_opaque_state() {
 }
 
 void CommandBuffer::set_quad_state() {
-  auto& state = static_state.state;
+  auto& state = static_state_.state;
   memset(&state, 0, sizeof(state));
   state.front_face = VK_FRONT_FACE_COUNTER_CLOCKWISE;
   state.cull_mode = VK_CULL_MODE_NONE;
@@ -1442,7 +1437,7 @@ void CommandBuffer::set_quad_state() {
 }
 
 void CommandBuffer::set_opaque_sprite_state() {
-  auto& state = static_state.state;
+  auto& state = static_state_.state;
   memset(&state, 0, sizeof(state));
   state.front_face = VK_FRONT_FACE_COUNTER_CLOCKWISE;
   state.cull_mode = VK_CULL_MODE_NONE;
@@ -1456,7 +1451,7 @@ void CommandBuffer::set_opaque_sprite_state() {
 }
 
 void CommandBuffer::set_transparent_sprite_state() {
-  auto& state = static_state.state;
+  auto& state = static_state_.state;
   memset(&state, 0, sizeof(state));
   state.front_face = VK_FRONT_FACE_COUNTER_CLOCKWISE;
   state.cull_mode = VK_CULL_MODE_NONE;
@@ -1477,56 +1472,56 @@ void CommandBuffer::set_transparent_sprite_state() {
 void CommandBuffer::restore_state(const CommandBufferSavedState& state) {
   for (unsigned i = 0; i < VULKAN_NUM_DESCRIPTOR_SETS; i++) {
     if (state.flags & (COMMAND_BUFFER_SAVED_BINDINGS_0_BIT << i)) {
-      if (memcmp(state.bindings.bindings[i], bindings.bindings[i],
-                 sizeof(bindings.bindings[i]))) {
-        memcpy(bindings.bindings[i], state.bindings.bindings[i],
-               sizeof(bindings.bindings[i]));
-        memcpy(bindings.cookies[i], state.bindings.cookies[i],
-               sizeof(bindings.cookies[i]));
-        memcpy(bindings.secondary_cookies[i],
+      if (memcmp(state.bindings.bindings[i], bindings_.bindings[i],
+                 sizeof(bindings_.bindings[i]))) {
+        memcpy(bindings_.bindings[i], state.bindings.bindings[i],
+               sizeof(bindings_.bindings[i]));
+        memcpy(bindings_.cookies[i], state.bindings.cookies[i],
+               sizeof(bindings_.cookies[i]));
+        memcpy(bindings_.secondary_cookies[i],
                state.bindings.secondary_cookies[i],
-               sizeof(bindings.secondary_cookies[i]));
-        dirty_sets |= 1u << i;
+               sizeof(bindings_.secondary_cookies[i]));
+        dirty_sets_ |= 1u << i;
       }
     }
   }
 
   if (state.flags & COMMAND_BUFFER_SAVED_PUSH_CONSTANT_BIT) {
-    if (memcmp(state.bindings.push_constant_data, bindings.push_constant_data,
-               sizeof(bindings.push_constant_data))) {
-      memcpy(bindings.push_constant_data, state.bindings.push_constant_data,
-             sizeof(bindings.push_constant_data));
+    if (memcmp(state.bindings.push_constant_data, bindings_.push_constant_data,
+               sizeof(bindings_.push_constant_data))) {
+      memcpy(bindings_.push_constant_data, state.bindings.push_constant_data,
+             sizeof(bindings_.push_constant_data));
       set_dirty(COMMAND_BUFFER_DIRTY_PUSH_CONSTANTS_BIT);
     }
   }
 
   if ((state.flags & COMMAND_BUFFER_SAVED_VIEWPORT_BIT) &&
-      memcmp(&state.viewport, &viewport, sizeof(viewport))) {
-    viewport = state.viewport;
+      memcmp(&state.viewport, &viewport_, sizeof(viewport_))) {
+    viewport_ = state.viewport;
     set_dirty(COMMAND_BUFFER_DIRTY_VIEWPORT_BIT);
   }
 
   if ((state.flags & COMMAND_BUFFER_SAVED_SCISSOR_BIT) &&
-      memcmp(&state.scissor, &scissor, sizeof(scissor))) {
-    scissor = state.scissor;
+      memcmp(&state.scissor, &scissor_, sizeof(scissor_))) {
+    scissor_ = state.scissor;
     set_dirty(COMMAND_BUFFER_DIRTY_SCISSOR_BIT);
   }
 
   if (state.flags & COMMAND_BUFFER_SAVED_RENDER_STATE_BIT) {
-    if (memcmp(&state.static_state, &static_state, sizeof(static_state))) {
-      memcpy(&static_state, &state.static_state, sizeof(static_state));
+    if (memcmp(&state.static_state, &static_state_, sizeof(static_state_))) {
+      memcpy(&static_state_, &state.static_state, sizeof(static_state_));
       set_dirty(COMMAND_BUFFER_DIRTY_STATIC_STATE_BIT);
     }
 
-    if (memcmp(&state.potential_static_state, &potential_static_state,
-               sizeof(potential_static_state))) {
-      memcpy(&potential_static_state, &state.potential_static_state,
-             sizeof(potential_static_state));
+    if (memcmp(&state.potential_static_state, &potential_static_state_,
+               sizeof(potential_static_state_))) {
+      memcpy(&potential_static_state_, &state.potential_static_state,
+             sizeof(potential_static_state_));
       set_dirty(COMMAND_BUFFER_DIRTY_STATIC_STATE_BIT);
     }
 
-    if (memcmp(&state.dynamic_state, &dynamic_state, sizeof(dynamic_state))) {
-      memcpy(&dynamic_state, &state.dynamic_state, sizeof(dynamic_state));
+    if (memcmp(&state.dynamic_state, &dynamic_state_, sizeof(dynamic_state_))) {
+      memcpy(&dynamic_state_, &state.dynamic_state, sizeof(dynamic_state_));
       set_dirty(COMMAND_BUFFER_DIRTY_STENCIL_REFERENCE_BIT |
                 COMMAND_BUFFER_DIRTY_DEPTH_BIAS_BIT);
     }
@@ -1537,28 +1532,29 @@ void CommandBuffer::save_state(CommandBufferSaveStateFlags flags,
                                CommandBufferSavedState& state) {
   for (unsigned i = 0; i < VULKAN_NUM_DESCRIPTOR_SETS; i++) {
     if (flags & (COMMAND_BUFFER_SAVED_BINDINGS_0_BIT << i)) {
-      memcpy(state.bindings.bindings[i], bindings.bindings[i],
-             sizeof(bindings.bindings[i]));
-      memcpy(state.bindings.cookies[i], bindings.cookies[i],
-             sizeof(bindings.cookies[i]));
-      memcpy(state.bindings.secondary_cookies[i], bindings.secondary_cookies[i],
-             sizeof(bindings.secondary_cookies[i]));
+      memcpy(state.bindings.bindings[i], bindings_.bindings[i],
+             sizeof(bindings_.bindings[i]));
+      memcpy(state.bindings.cookies[i], bindings_.cookies[i],
+             sizeof(bindings_.cookies[i]));
+      memcpy(state.bindings.secondary_cookies[i],
+             bindings_.secondary_cookies[i],
+             sizeof(bindings_.secondary_cookies[i]));
     }
   }
 
   if (flags & COMMAND_BUFFER_SAVED_VIEWPORT_BIT)
-    state.viewport = viewport;
+    state.viewport = viewport_;
   if (flags & COMMAND_BUFFER_SAVED_SCISSOR_BIT)
-    state.scissor = scissor;
+    state.scissor = scissor_;
   if (flags & COMMAND_BUFFER_SAVED_RENDER_STATE_BIT) {
-    memcpy(&state.static_state, &static_state, sizeof(static_state));
-    state.potential_static_state = potential_static_state;
-    state.dynamic_state = dynamic_state;
+    memcpy(&state.static_state, &static_state_, sizeof(static_state_));
+    state.potential_static_state = potential_static_state_;
+    state.dynamic_state = dynamic_state_;
   }
 
   if (flags & COMMAND_BUFFER_SAVED_PUSH_CONSTANT_BIT)
-    memcpy(state.bindings.push_constant_data, bindings.push_constant_data,
-           sizeof(bindings.push_constant_data));
+    memcpy(state.bindings.push_constant_data, bindings_.push_constant_data,
+           sizeof(bindings_.push_constant_data));
 
   state.flags = flags;
 }
@@ -1582,9 +1578,9 @@ void CommandBufferUtil::draw_quad(
     const std::string& vertex,
     const std::string& fragment,
     const std::vector<std::pair<std::string, int>>& defines) {
-  auto& device = cmd.get_device();
+  auto& device_ = cmd.get_device();
   auto* program =
-      device.get_shader_manager().register_graphics(vertex, fragment);
+      device_.get_shader_manager().register_graphics(vertex, fragment);
   unsigned variant = program->register_variant(defines);
   cmd.set_program(*program->get_program(variant));
   cmd.set_quad_state();
